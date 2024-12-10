@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "letpot"
+version = "0.1.0"
+description = ""
+authors = ["Joris Pelgröm <joris.pelgrom@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.13"
+aiohttp = ">=3.0.0"
+aiomqtt = ">=2.0.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
