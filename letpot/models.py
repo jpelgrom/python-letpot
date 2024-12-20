@@ -8,6 +8,7 @@ class AuthenticationInfo:
     refresh_token: str
     refresh_token_expires: int
     user_id: str
+    email: str
 
 @dataclass
 class LetPotDevice:

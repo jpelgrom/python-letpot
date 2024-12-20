@@ -5,7 +5,7 @@ from .models import AuthenticationInfo, LetPotDevice
 
 
 class LetPotClient:
-    """Client for connecting to LetPot."""
+    """Client for connecting to LetPot account."""
 
     API_HOST = "https://api.letpot.net/app/"
 
@@ -15,6 +15,7 @@ class LetPotClient:
     _refresh_token: str | None = None
     _refresh_token_expires: int = 0
     _user_id: str | None = None
+    _email: str | None = None
 
     def __init__(self, session: ClientSession | None = None, info: AuthenticationInfo | None = None) -> None:
         self._session = session if session else ClientSession()
@@ -25,6 +26,7 @@ class LetPotClient:
             self._refresh_token = info.refresh_token
             self._refresh_token_expires = info.refresh_token_expires
             self._user_id = info.user_id
+            self._email = info.email
 
     async def _request(self, method: str, path: str, **kwargs) -> ClientResponse:
         """Make a request."""
@@ -62,13 +64,15 @@ class LetPotClient:
         self._refresh_token = json["data"]["refreshToken"]["token"]
         self._refresh_token_expires = json["data"]["refreshToken"]["exp"]
         self._user_id = json["data"]["user_id"]
+        self._email = email.lower()
 
         return AuthenticationInfo(
             access_token=self._access_token,
             access_token_expires=self._access_token_expires,
             refresh_token=self._refresh_token,
             refresh_token_expires=self._refresh_token_expires,
-            user_id=self._user_id
+            user_id=self._user_id,
+            email=self._email
         )
     
     async def refresh_token(self) -> AuthenticationInfo:
@@ -97,7 +101,8 @@ class LetPotClient:
             access_token_expires=self._access_token_expires,
             refresh_token=self._refresh_token,
             refresh_token_expires=self._refresh_token_expires,
-            user_id=self._user_id
+            user_id=self._user_id,
+            email=self._email
         )
 
     async def get_devices(self) -> list[LetPotDevice]:
