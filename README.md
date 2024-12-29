@@ -15,4 +15,7 @@ async with aiohttp.ClientSession() as session:
 
     devices = await client.get_devices()
     print(devices)
+
+    device_client = LetPotDeviceClient(info=auth, device_serial=devices[0].serial_number)
+    await device_client.subscribe(lambda status : print(status))
 ```
