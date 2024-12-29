@@ -1,8 +1,9 @@
 [tool.poetry]
 name = "letpot"
 version = "0.1.0"
-description = ""
+description = "Python client for LetPot hydrophonic gardens."
 authors = ["Joris Pelgröm <joris.pelgrom@gmail.com>"]
+license = "MIT"
 readme = "README.md"
 
 [tool.poetry.dependencies]
