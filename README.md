@@ -2,10 +2,19 @@
 
 Python client for LetPot hydrophonic gardens.
 
+The following models should be supported, although only LPH-AIR is tested:
+
+ - LPH-AIR
+ - LPH-MAX
+ - LPH-MINI
+ - LPH-PRO
+ - LPH-SE
+
 ## Example usage
 
 ```python
 from letpot.client import LetPotClient
+from letpot.deviceclient import LetPotDeviceClient
 
 async with aiohttp.ClientSession() as session:
     client = LetPotClient(session)

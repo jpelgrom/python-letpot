@@ -2,10 +2,10 @@ import asyncio
 import dataclasses
 from hashlib import md5, sha256
 import os
-import time
+import time as systime
 import aiomqtt
 
-from letpot.converters import LetPotDeviceConverter, LPH21Converter
+from letpot.converters import *
 from letpot.models import AuthenticationInfo, LetPotDeviceStatus
 
 
@@ -29,12 +29,18 @@ class LetPotDeviceClient:
         self._device_serial = device_serial
 
         device_type = self._device_serial[:5]
-        if LPH21Converter.supports_type(device_type):
-            self._converter = LPH21Converter
+        if LPHx1Converter.supports_type(device_type):
+            self._converter = LPHx1Converter
+        elif IGSorAltConverter.supports_type(device_type):
+            self._converter = IGSorAltConverter
+        elif LPH6xConverter.supports_type(device_type):
+            self._converter = LPH6xConverter
+        elif LPH63Converter.supports_type(device_type):
+            self._converter = LPH63Converter
 
     def _generate_client_id(self) -> str:
         """Generate a client identifier for the connection."""
-        return f"LetPot_{round(time.time() * 1000)}_{os.urandom(4).hex()[:8]}"
+        return f"LetPot_{round(systime.time() * 1000)}_{os.urandom(4).hex()[:8]}"
     
     def _generate_message_packets(self, type: int, subtype: int, message: list[int]) -> list[str]:
         """Convert a message to one or more packets with the message payload."""
@@ -128,7 +134,8 @@ class LetPotDeviceClient:
 
     async def set_light_brightness(self, level: int) -> None:
         """Set the light brightness for this device (brightness level)."""
-        if level not in self._converter.get_light_brightness_levels():
+        device_type = self._device_serial[:5]
+        if level not in self._converter.get_light_brightness_levels(device_type):
             raise Exception(f"Device doesn't support setting light brightness to {level}")
         if self.last_status is None:
             raise Exception("Client doesn't have a status to update")
@@ -144,15 +151,15 @@ class LetPotDeviceClient:
         new_status = dataclasses.replace(self.last_status, light_mode=mode)
         await self._publish(self._converter.get_update_status_message(new_status))
 
-    async def set_light_schedule(self, start_hour: int, start_min: int, end_hour: int, end_min: int) -> None:
+    async def set_light_schedule(self, start: time, end: time) -> None:
         """Set the light schedule for this device (start time-end time)."""
         if self.last_status is None:
             raise Exception("Client doesn't have a status to update")
         
         new_status = dataclasses.replace(
             self.last_status,
-            light_schedule_start=(start_hour, start_min),
-            light_schedule_end=(end_hour, end_min)
+            light_schedule_start=start,
+            light_schedule_end=end
         )
         await self._publish(self._converter.get_update_status_message(new_status))
 

@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import time
 
 
 @dataclass
@@ -20,15 +21,20 @@ class LetPotDevice:
 
 @dataclass
 class LetPotDeviceStatus:
-    light_brightness: int
+    light_brightness: int | None
     light_mode: int
-    light_schedule_end: tuple[int, int]
-    light_schedule_start: tuple[int, int]
-    online: int
+    light_schedule_end: time
+    light_schedule_start: time
+    online: bool
     plant_days: int
     pump_mode: int
-    pump_status: int
+    pump_nutrient: int | None
+    pump_status: int | None
     raw: list[int]
     system_on: bool
     system_sound: bool | None
     system_state: int
+    temperature_unit: int | None
+    temperature_value: int | None
+    water_mode: int | None
+    water_level: int | None
