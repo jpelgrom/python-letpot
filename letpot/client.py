@@ -136,7 +136,7 @@ class LetPotClient:
                 LetPotDevice(
                     serial_number=device["sn"],
                     name=device["name"],
-                    type=device["dev_type"],
+                    device_type=device["dev_type"],
                     is_online=device["is_online"],
                     is_remote=device["is_remote"],
                 )

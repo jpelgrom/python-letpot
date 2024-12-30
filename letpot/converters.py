@@ -273,3 +273,11 @@ class LPH63Converter(LetPotDeviceConverter):
 
     def get_light_brightness_levels(device_type: str) -> list[int]:
         return [0, 125, 250, 375, 500, 625, 750, 875, 1000]
+
+
+CONVERTERS: list[LetPotDeviceConverter] = [
+    LPHx1Converter,
+    IGSorAltConverter,
+    LPH6xConverter,
+    LPH63Converter,
+]

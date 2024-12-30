@@ -28,7 +28,7 @@ class LetPotDevice:
 
     serial_number: str
     name: str
-    type: str
+    device_type: str
     is_online: bool
     is_remote: bool
 

@@ -9,13 +9,7 @@ import time as systime
 from typing import Callable
 import aiomqtt
 
-from letpot.converters import (
-    IGSorAltConverter,
-    LetPotDeviceConverter,
-    LPH63Converter,
-    LPH6xConverter,
-    LPHx1Converter,
-)
+from letpot.converters import CONVERTERS, LetPotDeviceConverter
 from letpot.exceptions import LetPotException
 from letpot.models import AuthenticationInfo, LetPotDeviceStatus
 
@@ -40,14 +34,10 @@ class LetPotDeviceClient:
         self._device_serial = device_serial
 
         device_type = self._device_serial[:5]
-        if LPHx1Converter.supports_type(device_type):
-            self._converter = LPHx1Converter
-        elif IGSorAltConverter.supports_type(device_type):
-            self._converter = IGSorAltConverter
-        elif LPH6xConverter.supports_type(device_type):
-            self._converter = LPH6xConverter
-        elif LPH63Converter.supports_type(device_type):
-            self._converter = LPH63Converter
+        for converter in CONVERTERS:
+            if converter.supports_type(device_type):
+                self._converter = converter
+                break
 
     def _generate_client_id(self) -> str:
         """Generate a client identifier for the connection."""
