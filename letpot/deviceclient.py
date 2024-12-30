@@ -167,13 +167,17 @@ class LetPotDeviceClient:
         new_status = dataclasses.replace(self.last_status, light_mode=mode)
         await self._publish(self._converter.get_update_status_message(new_status))
 
-    async def set_light_schedule(self, start: time, end: time) -> None:
-        """Set the light schedule for this device (start time-end time)."""
+    async def set_light_schedule(self, start: time | None, end: time | None) -> None:
+        """Set the light schedule for this device (start time and/or end time)."""
         if self.last_status is None:
             raise LetPotException("Client doesn't have a status to update")
 
+        start_time = self.last_status.light_schedule_start if start is None else start
+        end_time = self.last_status.light_schedule_end if end is None else end
         new_status = dataclasses.replace(
-            self.last_status, light_schedule_start=start, light_schedule_end=end
+            self.last_status,
+            light_schedule_start=start_time,
+            light_schedule_end=end_time,
         )
         await self._publish(self._converter.get_update_status_message(new_status))
 
