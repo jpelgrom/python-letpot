@@ -5,9 +5,9 @@ class LetPotException(Exception):
     """Generic exception."""
 
 
-class LetPotConnectionException(Exception):
+class LetPotConnectionException(LetPotException):
     """LetPot connection exception."""
 
 
-class LetPotAuthenticationException(Exception):
+class LetPotAuthenticationException(LetPotException):
     """LetPot authentication exception."""

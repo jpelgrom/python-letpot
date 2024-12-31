@@ -124,9 +124,12 @@ class LetPotClient:
 
         if response.status != 200:
             text = await response.text()
-            raise LetPotConnectionException(
-                f"get_devices returned {response.status}: {text}"
-            )
+
+            msg = f"get_devices returned {response.status}: {text}"
+            if response.status == 401:
+                raise LetPotAuthenticationException(msg)
+            else:
+                raise LetPotConnectionException(msg)
 
         json = await response.json()
 

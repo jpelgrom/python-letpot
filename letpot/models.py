@@ -19,7 +19,7 @@ class AuthenticationInfo:
     @property
     def is_valid(self) -> bool:
         """Returns if the access token is valid."""
-        return self.access_token_expires < systime.time()
+        return self.access_token_expires > int(systime.time())
 
 
 @dataclass
