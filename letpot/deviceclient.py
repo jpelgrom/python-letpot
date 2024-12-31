@@ -153,11 +153,13 @@ class LetPotDeviceClient:
                         self._publish(self._converter.get_current_status_message())
                     )
             except aiomqtt.MqttError as err:
+                self._client = None
+
                 if isinstance(err, aiomqtt.MqttCodeError):
-                    if err.rc in [4, 5, 135]:
-                        raise LetPotAuthenticationException(
-                            "MQTT didn't accept credentials"
-                        ) from err
+                    if err.rc in [4, 5, 134, 135]:
+                        msg = "MQTT auth error"
+                        _LOGGER.error("%s: %s", msg, err)
+                        raise LetPotAuthenticationException(msg) from err
 
                 self._connection_attempts += 1
                 reconnect_interval = min(self._connection_attempts * 15, 600)
