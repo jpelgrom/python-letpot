@@ -4,14 +4,28 @@ import asyncio
 import dataclasses
 from datetime import time
 from hashlib import md5, sha256
+import logging
 import os
 import time as systime
+import ssl
 from typing import Callable
 import aiomqtt
 
 from letpot.converters import CONVERTERS, LetPotDeviceConverter
-from letpot.exceptions import LetPotException
+from letpot.exceptions import LetPotAuthenticationException, LetPotException
 from letpot.models import AuthenticationInfo, LetPotDeviceStatus
+
+_LOGGER = logging.getLogger(__name__)
+
+
+def _create_ssl_context() -> ssl.SSLContext:
+    """Create a SSL context for the MQTT connection, avoids a blocking call later."""
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS)
+    context.load_default_certs()
+    return context
+
+
+_SSL_CONTEXT = _create_ssl_context()
 
 
 class LetPotDeviceClient:
@@ -21,6 +35,7 @@ class LetPotDeviceClient:
     MTU = 128
 
     _client: aiomqtt.Client | None = None
+    _connection_attempts: int = 0
     _converter: LetPotDeviceConverter | None = None
     _message_id: int = 0
     _user_id: str | None = None
@@ -86,7 +101,6 @@ class LetPotDeviceClient:
     ) -> None:
         """Process incoming messages from the broker."""
         async for message in self._client.messages:
-            print(f"{message.topic} received: {message.payload}")
             if self._converter is not None:
                 status = self._converter.convert_hex_to_status(message.payload)
                 if status is not None:
@@ -104,7 +118,6 @@ class LetPotDeviceClient:
         topic = f"{self._device_serial}/cmd"
         for publish_message in messages:
             await self._client.publish(topic, payload=publish_message)
-            print(f"{topic} published: {publish_message}")
 
     async def subscribe(self, callback: Callable[[LetPotDeviceStatus], None]) -> None:
         """Subscribe to state updates for this device."""
@@ -112,7 +125,6 @@ class LetPotDeviceClient:
         password = sha256(
             f"{self._user_id}|{md5(username.encode()).hexdigest()}".encode()
         ).hexdigest()
-        reconnect_interval = 10
         while True:
             try:
                 async with (
@@ -124,24 +136,37 @@ class LetPotDeviceClient:
                         identifier=self._generate_client_id(),
                         protocol=aiomqtt.ProtocolVersion.V5,
                         transport="websockets",
-                        tls_params=aiomqtt.TLSParameters(),
+                        tls_context=_SSL_CONTEXT,
+                        tls_insecure=False,
                         websocket_path="/mqttwss",
                     ) as client,
                     asyncio.TaskGroup() as tg,
                 ):
                     self._client = client
+                    self._connection_attempts = 0
                     self._message_id = 0
 
                     await client.subscribe(f"{self._device_serial}/data")
-                    print("Client is subscribed and awaiting statuses...")
 
                     tg.create_task(self._handle_messages(callback))
                     tg.create_task(
                         self._publish(self._converter.get_current_status_message())
                     )
-            except aiomqtt.MqttError as e:
-                print(f"Connection lost: {e}")
-                self._client = None
+            except aiomqtt.MqttError as err:
+                if isinstance(err, aiomqtt.MqttCodeError):
+                    if err.rc in [4, 5, 135]:
+                        raise LetPotAuthenticationException(
+                            "MQTT didn't accept credentials"
+                        ) from err
+
+                self._connection_attempts += 1
+                reconnect_interval = min(self._connection_attempts * 15, 600)
+                _LOGGER.error(
+                    "MQTT error, reconnecting in %i seconds: %s",
+                    reconnect_interval,
+                    err,
+                )
+
                 await asyncio.sleep(reconnect_interval)
             finally:
                 self._client = None

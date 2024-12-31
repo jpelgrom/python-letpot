@@ -2,10 +2,13 @@
 
 from abc import ABC, abstractmethod
 from datetime import time
+import logging
 import math
 
 from letpot.exceptions import LetPotException
 from letpot.models import LetPotDeviceStatus
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class LetPotDeviceConverter(ABC):
@@ -84,7 +87,7 @@ class LPHx1Converter(LetPotDeviceConverter):
     def convert_hex_to_status(hex_message: bytes) -> LetPotDeviceStatus | None:
         data = LetPotDeviceConverter._hex_bytes_to_int_array(hex_message)
         if data[4] != 98 or data[5] != 1:
-            print("Invalid hex message, ignoring")
+            _LOGGER.debug(f"Invalid hex message received, ignoring: {hex_message}")
             return None
 
         return LetPotDeviceStatus(
@@ -135,7 +138,7 @@ class IGSorAltConverter(LetPotDeviceConverter):
     def convert_hex_to_status(hex_message: bytes) -> LetPotDeviceStatus | None:
         data = LetPotDeviceConverter._hex_bytes_to_int_array(hex_message)
         if data[4] != 12 or data[5] != 1:
-            print("Invalid hex message, ignoring")
+            _LOGGER.debug(f"Invalid hex message received, ignoring: {hex_message}")
             return None
 
         return LetPotDeviceStatus(
@@ -191,7 +194,7 @@ class LPH6xConverter(LetPotDeviceConverter):
     def convert_hex_to_status(hex_message: bytes) -> LetPotDeviceStatus | None:
         data = LetPotDeviceConverter._hex_bytes_to_int_array(hex_message)
         if data[4] != 14 or data[5] != 1:
-            print("Invalid hex message, ignoring")
+            _LOGGER.debug(f"Invalid hex message received, ignoring: {hex_message}")
             return None
 
         return LetPotDeviceStatus(
@@ -248,7 +251,7 @@ class LPH63Converter(LetPotDeviceConverter):
     def convert_hex_to_status(hex_message: bytes) -> LetPotDeviceStatus | None:
         data = LetPotDeviceConverter._hex_bytes_to_int_array(hex_message)
         if data[4] != 102 or data[5] != 1:
-            print("Invalid hex message, ignoring")
+            _LOGGER.debug(f"Invalid hex message received, ignoring: {hex_message}")
             return None
 
         return LetPotDeviceStatus(
