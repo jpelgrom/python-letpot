@@ -13,7 +13,7 @@ class LetPotClient:
 
     API_HOST = "https://api.letpot.net/app/"
 
-    _session: ClientSession | None = None
+    _session: ClientSession
     _access_token: str | None = None
     _access_token_expires: int = 0
     _refresh_token: str | None = None
@@ -36,7 +36,7 @@ class LetPotClient:
             self._user_id = info.user_id
             self._email = info.email
 
-    async def _request(self, method: str, path: str, **kwargs) -> ClientResponse:
+    async def _request(self, method: str, path: str) -> ClientResponse:
         """Make a request."""
         if self._access_token is None:
             raise LetPotAuthenticationException("Missing access token, log in first")
@@ -48,7 +48,6 @@ class LetPotClient:
         return await self._session.request(
             method,
             self.API_HOST + path,
-            **kwargs,
             headers=headers,
         )
 
@@ -78,11 +77,11 @@ class LetPotClient:
         self._email = email.lower()
 
         return AuthenticationInfo(
-            access_token=self._access_token,
+            access_token=self._access_token or "",
             access_token_expires=self._access_token_expires,
-            refresh_token=self._refresh_token,
+            refresh_token=self._refresh_token or "",
             refresh_token_expires=self._refresh_token_expires,
-            user_id=self._user_id,
+            user_id=self._user_id or "",
             email=self._email,
         )
 
@@ -110,12 +109,12 @@ class LetPotClient:
         self._refresh_token_expires = json["data"]["refreshToken"]["exp"]
 
         return AuthenticationInfo(
-            access_token=self._access_token,
+            access_token=self._access_token or "",
             access_token_expires=self._access_token_expires,
-            refresh_token=self._refresh_token,
+            refresh_token=self._refresh_token or "",
             refresh_token_expires=self._refresh_token_expires,
-            user_id=self._user_id,
-            email=self._email,
+            user_id=self._user_id or "",
+            email=self._email or "",
         )
 
     async def get_devices(self) -> list[LetPotDevice]:

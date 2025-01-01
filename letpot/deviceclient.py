@@ -20,7 +20,7 @@ _LOGGER = logging.getLogger(__name__)
 
 def _create_ssl_context() -> ssl.SSLContext:
     """Create a SSL context for the MQTT connection, avoids a blocking call later."""
-    context = ssl.SSLContext(ssl.PROTOCOL_TLS)
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     context.load_default_certs()
     return context
 
@@ -38,9 +38,9 @@ class LetPotDeviceClient:
     _connection_attempts: int = 0
     _converter: LetPotDeviceConverter | None = None
     _message_id: int = 0
-    _user_id: str | None = None
-    _email: str | None = None
-    _device_serial: str | None = None
+    _user_id: str
+    _email: str
+    _device_serial: str
     device_type: str
     device_model_name: str | None = None
     device_model_code: str | None = None
@@ -56,10 +56,11 @@ class LetPotDeviceClient:
         device_type = self._device_serial[:5]
         for converter in CONVERTERS:
             if converter.supports_type(device_type):
-                self._converter = converter
-                (self.device_model_name, self.device_model_code) = (
-                    converter.get_device_model(device_type)
-                )
+                self._converter = converter(device_type)
+                device_model = self._converter.get_device_model()
+                if device_model is not None:
+                    self.device_model_name = device_model[0]
+                    self.device_model_code = device_model[1]
                 break
 
     def _generate_client_id(self) -> str:
@@ -108,8 +109,8 @@ class LetPotDeviceClient:
         self, callback: Callable[[LetPotDeviceStatus], None]
     ) -> None:
         """Process incoming messages from the broker."""
-        async for message in self._client.messages:
-            if self._converter is not None:
+        if self._converter is not None and self._client is not None:
+            async for message in self._client.messages:
                 status = self._converter.convert_hex_to_status(message.payload)
                 if status is not None:
                     self._update_status = None
@@ -145,8 +146,8 @@ class LetPotDeviceClient:
 
     async def _publish_status(self, status: LetPotDeviceStatus) -> None:
         """Set the device status."""
-        if self._client is None:
-            raise LetPotException("Missing client to publish message with")
+        if self._converter is None or self._client is None:
+            raise LetPotException("Missing converter/client to publish message with")
 
         if self._update_clear is not None:
             self._update_clear.cancel()
@@ -166,7 +167,7 @@ class LetPotDeviceClient:
         password = sha256(
             f"{self._user_id}|{md5(username.encode()).hexdigest()}".encode()
         ).hexdigest()
-        while True:
+        while self._converter is not None:
             try:
                 async with (
                     aiomqtt.Client(
@@ -214,13 +215,15 @@ class LetPotDeviceClient:
             finally:
                 self._client = None
 
-    def get_light_brightness_steps(self) -> list[int]:
-        return self._converter.get_light_brightness_levels()
+    def get_light_brightness_levels(self) -> list[int]:
+        if self._converter is None:
+            return []
+        else:
+            return self._converter.get_light_brightness_levels()
 
     async def set_light_brightness(self, level: int) -> None:
         """Set the light brightness for this device (brightness level)."""
-        device_type = self._device_serial[:5]
-        if level not in self._converter.get_light_brightness_levels(device_type):
+        if level not in self.get_light_brightness_levels():
             raise LetPotException(
                 f"Device doesn't support setting light brightness to {level}"
             )
