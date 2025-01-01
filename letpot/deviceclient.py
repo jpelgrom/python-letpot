@@ -41,6 +41,9 @@ class LetPotDeviceClient:
     _user_id: str | None = None
     _email: str | None = None
     _device_serial: str | None = None
+    device_type: str
+    device_model_name: str | None = None
+    device_model_code: str | None = None
     _update_status: LetPotDeviceStatus | None = None
     _update_clear: asyncio.Task | None = None
     last_status: LetPotDeviceStatus | None = None
@@ -54,6 +57,9 @@ class LetPotDeviceClient:
         for converter in CONVERTERS:
             if converter.supports_type(device_type):
                 self._converter = converter
+                (self.device_model_name, self.device_model_code) = (
+                    converter.get_device_model(device_type)
+                )
                 break
 
     def _generate_client_id(self) -> str:
@@ -207,6 +213,9 @@ class LetPotDeviceClient:
                 await asyncio.sleep(reconnect_interval)
             finally:
                 self._client = None
+
+    def get_light_brightness_steps(self) -> list[int]:
+        return self._converter.get_light_brightness_levels()
 
     async def set_light_brightness(self, level: int) -> None:
         """Set the light brightness for this device (brightness level)."""

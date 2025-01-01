@@ -10,6 +10,12 @@ from letpot.models import LetPotDeviceStatus
 
 _LOGGER = logging.getLogger(__name__)
 
+MODEL_AIR = ("LetPot Air", "LPH-AIR")
+MODEL_MAX = ("LetPot Max", "LPH-MAX")
+MODEL_MINI = ("LetPot Mini", "LPH-MINI")
+MODEL_PRO = ("LetPot Pro", "LPH-PRO")
+MODEL_SE = ("LetPot Senior", "LPH-SE")
+
 
 class LetPotDeviceConverter(ABC):
     """Base class for converters and info for device types."""
@@ -19,6 +25,11 @@ class LetPotDeviceConverter(ABC):
     def supports_type(device_type: str) -> bool:
         """Returns if the converter supports the supplied type."""
         pass
+
+    @staticmethod
+    @abstractmethod
+    def get_device_model(device_type: str) -> tuple[str, str] | None:
+        """Returns the device model name and code, if supported by the converter."""
 
     @staticmethod
     @abstractmethod
@@ -62,6 +73,16 @@ class LPHx1Converter(LetPotDeviceConverter):
 
     def supports_type(device_type: str) -> bool:
         return device_type in ["LPH11", "LPH21", "LPH31"]
+
+    def get_device_model(device_type: str) -> tuple[str, str] | None:
+        if device_type == "LPH11":
+            return MODEL_MINI
+        elif device_type == "LPH21":
+            return MODEL_AIR
+        elif device_type == "LPH31":
+            return MODEL_SE
+        else:
+            return None
 
     def get_current_status_message() -> list[int]:
         return [97, 1]
@@ -116,6 +137,16 @@ class IGSorAltConverter(LetPotDeviceConverter):
     def supports_type(device_type: str) -> bool:
         return device_type in ["IGS01", "LPH27", "LPH37", "LPH39"]
 
+    def get_device_model(device_type: str) -> tuple[str, str] | None:
+        if device_type == "IGS01":
+            return MODEL_PRO
+        elif device_type == "LPH27" or device_type == "LPH37":
+            return MODEL_SE
+        elif device_type == "LPH39":
+            return MODEL_MINI
+        else:
+            return None
+
     def get_current_status_message() -> list[int]:
         return [11, 1]
 
@@ -166,6 +197,12 @@ class LPH6xConverter(LetPotDeviceConverter):
 
     def supports_type(device_type: str) -> bool:
         return device_type in ["LPH60", "LPH61", "LPH62"]
+
+    def get_device_model(device_type: str) -> tuple[str, str] | None:
+        if device_type in ["LPH60", "LPH61", "LPH62"]:
+            return MODEL_MAX
+        else:
+            return None
 
     def get_current_status_message() -> list[int]:
         return [13, 1]
@@ -226,6 +263,12 @@ class LPH63Converter(LetPotDeviceConverter):
 
     def supports_type(device_type: str) -> bool:
         return device_type in ["LPH63"]
+
+    def get_device_model(device_type: str) -> tuple[str, str] | None:
+        if device_type == "LPH63":
+            return MODEL_MAX
+        else:
+            return None
 
     def get_current_status_message() -> list[int]:
         return [101, 1]
