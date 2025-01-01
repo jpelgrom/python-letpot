@@ -41,6 +41,8 @@ class LetPotDeviceClient:
     _user_id: str | None = None
     _email: str | None = None
     _device_serial: str | None = None
+    _update_status: LetPotDeviceStatus | None = None
+    _update_clear: asyncio.Task | None = None
     last_status: LetPotDeviceStatus | None = None
 
     def __init__(self, info: AuthenticationInfo, device_serial: str) -> None:
@@ -104,6 +106,7 @@ class LetPotDeviceClient:
             if self._converter is not None:
                 status = self._converter.convert_hex_to_status(message.payload)
                 if status is not None:
+                    self._update_status = None
                     self.last_status = status
                     callback(status)
 
@@ -118,6 +121,38 @@ class LetPotDeviceClient:
         topic = f"{self._device_serial}/cmd"
         for publish_message in messages:
             await self._client.publish(topic, payload=publish_message)
+
+    def _get_publish_status(self) -> LetPotDeviceStatus:
+        """Get the device status for publishing (pending update or latest)."""
+        if self._update_status is not None:
+            return self._update_status
+        elif self.last_status is not None:
+            return self.last_status
+        else:
+            raise LetPotException("Client doesn't have a status for publishing")
+
+    async def _clear_update_status(self) -> None:
+        """Clear the update status after a timeout, to prevent an out of date status."""
+        await asyncio.sleep(5)
+        self._update_status = None
+        self._update_clear = None
+
+    async def _publish_status(self, status: LetPotDeviceStatus) -> None:
+        """Set the device status."""
+        if self._client is None:
+            raise LetPotException("Missing client to publish message with")
+
+        if self._update_clear is not None:
+            self._update_clear.cancel()
+            try:
+                await self._update_clear
+            except asyncio.CancelledError:
+                pass
+        self._update_status = status
+        self._update_clear = asyncio.get_event_loop().create_task(
+            self._clear_update_status()
+        )
+        await self._publish(self._converter.get_update_status_message(status))
 
     async def subscribe(self, callback: Callable[[LetPotDeviceStatus], None]) -> None:
         """Subscribe to state updates for this device."""
@@ -180,62 +215,45 @@ class LetPotDeviceClient:
             raise LetPotException(
                 f"Device doesn't support setting light brightness to {level}"
             )
-        if self.last_status is None:
-            raise LetPotException("Client doesn't have a status to update")
 
-        new_status = dataclasses.replace(self.last_status, light_brightness=level)
-        await self._publish(self._converter.get_update_status_message(new_status))
+        status = dataclasses.replace(self._get_publish_status(), light_brightness=level)
+        await self._publish_status(status)
 
     async def set_light_mode(self, mode: int) -> None:
         """Set the light mode for this device (flower/vegetable)."""
-        if self.last_status is None:
-            raise LetPotException("Client doesn't have a status to update")
-
-        new_status = dataclasses.replace(self.last_status, light_mode=mode)
-        await self._publish(self._converter.get_update_status_message(new_status))
+        status = dataclasses.replace(self._get_publish_status(), light_mode=mode)
+        await self._publish_status(status)
 
     async def set_light_schedule(self, start: time | None, end: time | None) -> None:
         """Set the light schedule for this device (start time and/or end time)."""
-        if self.last_status is None:
-            raise LetPotException("Client doesn't have a status to update")
-
-        start_time = self.last_status.light_schedule_start if start is None else start
-        end_time = self.last_status.light_schedule_end if end is None else end
-        new_status = dataclasses.replace(
-            self.last_status,
+        use_status = self._get_publish_status()
+        start_time = use_status.light_schedule_start if start is None else start
+        end_time = use_status.light_schedule_end if end is None else end
+        status = dataclasses.replace(
+            use_status,
             light_schedule_start=start_time,
             light_schedule_end=end_time,
         )
-        await self._publish(self._converter.get_update_status_message(new_status))
+        await self._publish_status(status)
 
     async def set_plant_days(self, days: int) -> None:
         """Set the plant days counter for this device (number of days)."""
-        if self.last_status is None:
-            raise LetPotException("Client doesn't have a status to update")
-
-        new_status = dataclasses.replace(self.last_status, plant_days=days)
-        await self._publish(self._converter.get_update_status_message(new_status))
+        status = dataclasses.replace(self._get_publish_status(), plant_days=days)
+        await self._publish_status(status)
 
     async def set_power(self, on: bool) -> None:
         """Set the general power for this device (on/off)."""
-        if self.last_status is None:
-            raise LetPotException("Client doesn't have a status to update")
-
-        new_status = dataclasses.replace(self.last_status, system_on=on)
-        await self._publish(self._converter.get_update_status_message(new_status))
+        status = dataclasses.replace(self._get_publish_status(), system_on=on)
+        await self._publish_status(status)
 
     async def set_pump_mode(self, on: bool) -> None:
         """Set the pump mode for this device (on (scheduled)/off)."""
-        if self.last_status is None:
-            raise LetPotException("Client doesn't have a status to update")
-
-        new_status = dataclasses.replace(self.last_status, pump_mode=1 if on else 0)
-        await self._publish(self._converter.get_update_status_message(new_status))
+        status = dataclasses.replace(
+            self._get_publish_status(), pump_mode=1 if on else 0
+        )
+        await self._publish_status(status)
 
     async def set_sound(self, on: bool) -> None:
         """Set the alarm sound for this device (on/off)."""
-        if self.last_status is None:
-            raise LetPotException("Client doesn't have a status to update")
-
-        new_status = dataclasses.replace(self.last_status, system_sound=on)
-        await self._publish(self._converter.get_update_status_message(new_status))
+        status = dataclasses.replace(self._get_publish_status(), system_sound=on)
+        await self._publish_status(status)
