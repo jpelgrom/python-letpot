@@ -16,6 +16,7 @@ INFO = AuthenticationInfo(
 
 
 def test_valid_info() -> None:
+    """Test auth with access token expiring in the future is valid."""
     auth_info = dataclasses.replace(
         INFO,
         access_token_expires=int((datetime.now() + timedelta(days=7)).timestamp()),
@@ -25,6 +26,7 @@ def test_valid_info() -> None:
 
 
 def test_expired_info() -> None:
+    """Test auth with expired access token is considered invalid."""
     auth_info = dataclasses.replace(
         INFO,
         access_token_expires=int((datetime.now() - timedelta(days=7)).timestamp()),

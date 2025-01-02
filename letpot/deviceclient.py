@@ -216,6 +216,7 @@ class LetPotDeviceClient:
                 self._client = None
 
     def get_light_brightness_levels(self) -> list[int]:
+        """Get the light brightness levels for this device."""
         if self._converter is None:
             return []
         else:

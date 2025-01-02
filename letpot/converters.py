@@ -117,7 +117,7 @@ class LPHx1Converter(LetPotDeviceConverter):
     def convert_hex_to_status(self, message: PayloadType) -> LetPotDeviceStatus | None:
         data = self._hex_bytes_to_int_array(message)
         if data is None or data[4] != 98 or data[5] != 1:
-            _LOGGER.debug(f"Invalid message received, ignoring: {message!r}")
+            _LOGGER.debug("Invalid message received, ignoring: %s", message)
             return None
 
         return LetPotDeviceStatus(
@@ -179,7 +179,7 @@ class IGSorAltConverter(LetPotDeviceConverter):
     def convert_hex_to_status(self, message: PayloadType) -> LetPotDeviceStatus | None:
         data = self._hex_bytes_to_int_array(message)
         if data is None or data[4] != 12 or data[5] != 1:
-            _LOGGER.debug(f"Invalid message received, ignoring: {message!r}")
+            _LOGGER.debug("Invalid message received, ignoring: %s", message)
             return None
 
         return LetPotDeviceStatus(
@@ -241,7 +241,7 @@ class LPH6xConverter(LetPotDeviceConverter):
     def convert_hex_to_status(self, message: PayloadType) -> LetPotDeviceStatus | None:
         data = self._hex_bytes_to_int_array(message)
         if data is None or data[4] != 14 or data[5] != 1:
-            _LOGGER.debug(f"Invalid message received, ignoring: {message!r}")
+            _LOGGER.debug("Invalid message received, ignoring: %s", message)
             return None
 
         return LetPotDeviceStatus(
@@ -304,7 +304,7 @@ class LPH63Converter(LetPotDeviceConverter):
     def convert_hex_to_status(self, message: PayloadType) -> LetPotDeviceStatus | None:
         data = self._hex_bytes_to_int_array(message)
         if data is None or data[4] != 102 or data[5] != 1:
-            _LOGGER.debug(f"Invalid message received, ignoring: {message!r}")
+            _LOGGER.debug("Invalid message received, ignoring: %s", message)
             return None
 
         return LetPotDeviceStatus(
