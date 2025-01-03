@@ -1,10 +1,19 @@
 [tool.poetry]
 name = "letpot"
 version = "0.1.0"
-description = "Python client for LetPot hydrophonic gardens."
+description = "Asynchronous Python client for LetPot hydrophonic gardens."
 authors = ["Joris Pelgröm <joris.pelgrom@gmail.com>"]
 license = "MIT"
 readme = "README.md"
+homepage = "https://github.com/jpelgrom/python-letpot"
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Framework :: AsyncIO",
+  "Intended Audience :: Developers",
+  "Natural Language :: English",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3",
+]
 
 [tool.poetry.dependencies]
 python = "^3.13"
@@ -16,6 +25,10 @@ ruff = "0.8.4"
 pytest = "8.3.4"
 pytest-cov = "6.0.0"
 mypy = "1.14.1"
+
+[tool.poetry.urls]
+changelog = "https://github.com/jpelgrom/python-letpot/releases"
+issues = "https://github.com/jpelgrom/python-letpot/issues"
 
 [build-system]
 requires = ["poetry-core"]
