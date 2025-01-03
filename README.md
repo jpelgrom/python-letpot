@@ -1,6 +1,6 @@
 # python-letpot
 
-Python client for LetPot hydrophonic gardens.
+Asynchronous Python client for interacting with LetPot hydrophonic gardens via the manufacturer's cloud. You can listen for status updates (push) and change device settings.
 
 The following models should be supported, although only LPH-AIR is tested:
 
