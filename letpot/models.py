@@ -1,4 +1,4 @@
-"""Models for Python client for LetPot hydrophonic gardens."""
+"""Models for Python client for LetPot hydroponic gardens."""
 
 from dataclasses import dataclass
 from datetime import time

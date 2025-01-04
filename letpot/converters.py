@@ -1,4 +1,4 @@
-"""Python client for LetPot hydrophonic gardens."""
+"""Python client for LetPot hydroponic gardens."""
 
 from abc import ABC, abstractmethod
 from datetime import time

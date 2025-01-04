@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "letpot"
 version = "0.1.0"
-description = "Asynchronous Python client for LetPot hydrophonic gardens."
+description = "Asynchronous Python client for LetPot hydroponic gardens."
 authors = ["Joris Pelgröm <joris.pelgrom@gmail.com>"]
 license = "MIT"
 readme = "README.md"
@@ -27,8 +27,8 @@ pytest-cov = "6.0.0"
 mypy = "1.14.1"
 
 [tool.poetry.urls]
-changelog = "https://github.com/jpelgrom/python-letpot/releases"
-issues = "https://github.com/jpelgrom/python-letpot/issues"
+Changelog = "https://github.com/jpelgrom/python-letpot/releases"
+Issues = "https://github.com/jpelgrom/python-letpot/issues"
 
 [build-system]
 requires = ["poetry-core"]

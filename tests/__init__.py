@@ -1,1 +1,1 @@
-"""Test for Python client for LetPot hydrophonic gardens."""
+"""Tests for Python client for LetPot hydroponic gardens."""

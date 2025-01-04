@@ -1,4 +1,4 @@
-"""Exceptions for Python client for LetPot hydrophonic gardens."""
+"""Exceptions for Python client for LetPot hydroponic gardens."""
 
 
 class LetPotException(Exception):

@@ -1,4 +1,4 @@
-"""Python client for LetPot hydrophonic gardens."""
+"""Python client for LetPot hydroponic gardens."""
 
 import time
 from aiohttp import ClientSession, ClientResponse
