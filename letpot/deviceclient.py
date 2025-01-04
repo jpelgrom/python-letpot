@@ -191,9 +191,7 @@ class LetPotDeviceClient:
                     await client.subscribe(f"{self._device_serial}/data")
 
                     tg.create_task(self._handle_messages(callback))
-                    tg.create_task(
-                        self._publish(self._converter.get_current_status_message())
-                    )
+                    tg.create_task(self.request_status_update())
             except aiomqtt.MqttError as err:
                 self._client = None
 
@@ -221,6 +219,12 @@ class LetPotDeviceClient:
             return []
         else:
             return self._converter.get_light_brightness_levels()
+
+    async def request_status_update(self) -> None:
+        """Request the device to send the current device status."""
+        if self._converter is None:
+            raise LetPotException("Missing converter to build request message")
+        await self._publish(self._converter.get_current_status_message())
 
     async def set_light_brightness(self, level: int) -> None:
         """Set the light brightness for this device (brightness level)."""
