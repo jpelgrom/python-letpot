@@ -14,16 +14,19 @@ env:
 jobs:
   pytest:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ["3.12", "3.13"]
     steps:
       - name: Check out code
         uses: actions/checkout@v4
       - name: Set up Poetry
         run: pipx install poetry
-      - name: Set up Python
+      - name: Set up Python ${{ matrix.python }}
         id: python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ env.DEFAULT_PYTHON }}
+          python-version: ${{ matrix.python }}
           cache: "poetry"
       - name: Install dependencies
         run: poetry install --no-interaction
