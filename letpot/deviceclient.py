@@ -49,6 +49,7 @@ class LetPotDeviceClient:
 
     _update_status: LetPotDeviceStatus | None = None
     _update_clear: asyncio.Task | None = None
+    _status_event: asyncio.Event | None = None
     last_status: LetPotDeviceStatus | None = None
 
     def __init__(self, info: AuthenticationInfo, device_serial: str) -> None:
@@ -118,6 +119,8 @@ class LetPotDeviceClient:
                 self._update_status = None
                 self.last_status = status
                 callback(status)
+                if self._status_event is not None and not self._status_event.is_set():
+                    self._status_event.set()
 
     async def _publish(self, message: list[int]) -> None:
         """Publish a message to the device command topic."""
@@ -245,6 +248,13 @@ class LetPotDeviceClient:
         if self._converter is None:
             raise LetPotException("Missing converter to build request message")
         await self._publish(self._converter.get_current_status_message())
+
+    async def get_current_status(self) -> LetPotDeviceStatus | None:
+        """Request an update of and return the current device status."""
+        self._status_event = asyncio.Event()
+        await self.request_status_update()
+        await self._status_event.wait()
+        return self.last_status
 
     async def set_light_brightness(self, level: int) -> None:
         """Set the light brightness for this device (brightness level)."""
