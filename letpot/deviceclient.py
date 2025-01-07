@@ -35,15 +35,18 @@ class LetPotDeviceClient:
     MTU = 128
 
     _client: aiomqtt.Client | None = None
-    _connection_attempts: int = 0
+    _client_task: asyncio.Task | None = None
+    _connected: asyncio.Future[bool] | None = None
     _converter: LetPotDeviceConverter | None = None
     _message_id: int = 0
+
     _user_id: str
     _email: str
     _device_serial: str
     device_type: str
     device_model_name: str | None = None
     device_model_code: str | None = None
+
     _update_status: LetPotDeviceStatus | None = None
     _update_clear: asyncio.Task | None = None
     last_status: LetPotDeviceStatus | None = None
@@ -105,17 +108,16 @@ class LetPotDeviceClient:
 
         return packets
 
-    async def _handle_messages(
-        self, callback: Callable[[LetPotDeviceStatus], None]
+    def _handle_message(
+        self, message: aiomqtt.Message, callback: Callable[[LetPotDeviceStatus], None]
     ) -> None:
         """Process incoming messages from the broker."""
-        if self._converter is not None and self._client is not None:
-            async for message in self._client.messages:
-                status = self._converter.convert_hex_to_status(message.payload)
-                if status is not None:
-                    self._update_status = None
-                    self.last_status = status
-                    callback(status)
+        if self._converter is not None:
+            status = self._converter.convert_hex_to_status(message.payload)
+            if status is not None:
+                self._update_status = None
+                self.last_status = status
+                callback(status)
 
     async def _publish(self, message: list[int]) -> None:
         """Publish a message to the device command topic."""
@@ -161,37 +163,39 @@ class LetPotDeviceClient:
         )
         await self._publish(self._converter.get_update_status_message(status))
 
-    async def subscribe(self, callback: Callable[[LetPotDeviceStatus], None]) -> None:
+    async def _connect_and_subscribe(
+        self, callback: Callable[[LetPotDeviceStatus], None]
+    ) -> None:
         """Subscribe to state updates for this device."""
         username = f"{self._email}__letpot_v3"
         password = sha256(
             f"{self._user_id}|{md5(username.encode()).hexdigest()}".encode()
         ).hexdigest()
+        connection_attempts = 0
         while self._converter is not None:
             try:
-                async with (
-                    aiomqtt.Client(
-                        hostname=self.BROKER_HOST,
-                        port=443,
-                        username=username,
-                        password=password,
-                        identifier=self._generate_client_id(),
-                        protocol=aiomqtt.ProtocolVersion.V5,
-                        transport="websockets",
-                        tls_context=_SSL_CONTEXT,
-                        tls_insecure=False,
-                        websocket_path="/mqttwss",
-                    ) as client,
-                    asyncio.TaskGroup() as tg,
-                ):
+                async with aiomqtt.Client(
+                    hostname=self.BROKER_HOST,
+                    port=443,
+                    username=username,
+                    password=password,
+                    identifier=self._generate_client_id(),
+                    protocol=aiomqtt.ProtocolVersion.V5,
+                    transport="websockets",
+                    tls_context=_SSL_CONTEXT,
+                    tls_insecure=False,
+                    websocket_path="/mqttwss",
+                ) as client:
                     self._client = client
-                    self._connection_attempts = 0
                     self._message_id = 0
+                    connection_attempts = 0
 
                     await client.subscribe(f"{self._device_serial}/data")
+                    if self._connected is not None and not self._connected.done():
+                        self._connected.set_result(True)
 
-                    tg.create_task(self._handle_messages(callback))
-                    tg.create_task(self.request_status_update())
+                    async for message in client.messages:
+                        self._handle_message(message, callback)
             except aiomqtt.MqttError as err:
                 self._client = None
 
@@ -199,10 +203,13 @@ class LetPotDeviceClient:
                     if err.rc in [4, 5, 134, 135]:
                         msg = "MQTT auth error"
                         _LOGGER.error("%s: %s", msg, err)
-                        raise LetPotAuthenticationException(msg) from err
+                        auth_exception = LetPotAuthenticationException(msg)
+                        if self._connected is not None and not self._connected.done():
+                            self._connected.set_exception(auth_exception)
+                        raise auth_exception from err
 
-                self._connection_attempts += 1
-                reconnect_interval = min(self._connection_attempts * 15, 600)
+                connection_attempts += 1
+                reconnect_interval = min(connection_attempts * 15, 600)
                 _LOGGER.error(
                     "MQTT error, reconnecting in %i seconds: %s",
                     reconnect_interval,
@@ -212,6 +219,19 @@ class LetPotDeviceClient:
                 await asyncio.sleep(reconnect_interval)
             finally:
                 self._client = None
+                if self._connected is not None and not self._connected.done():
+                    self._connected.set_result(False)
+
+    async def subscribe(self, callback: Callable[[LetPotDeviceStatus], None]) -> None:
+        """Connect to the device client and wait for connection or raise an authentication failure."""
+        self._connected = asyncio.get_event_loop().create_future()
+        self._client_task = asyncio.create_task(self._connect_and_subscribe(callback))
+        await self._connected
+
+    def disconnect(self) -> None:
+        """Cancels the active device client connection, if any."""
+        if self._client_task is not None:
+            self._client_task.cancel()
 
     def get_light_brightness_levels(self) -> list[int]:
         """Get the light brightness levels for this device."""
