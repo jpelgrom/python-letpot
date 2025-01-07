@@ -36,7 +36,7 @@ class LetPotDeviceClient:
 
     _client: aiomqtt.Client | None = None
     _client_task: asyncio.Task | None = None
-    _connected: asyncio.Future | None = None
+    _connected: asyncio.Future[bool] | None = None
     _converter: LetPotDeviceConverter | None = None
     _message_id: int = 0
 
@@ -224,12 +224,12 @@ class LetPotDeviceClient:
 
     async def subscribe(self, callback: Callable[[LetPotDeviceStatus], None]) -> None:
         """Connect to the device client and wait for connection or raise an authentication failure."""
-        self._connected = asyncio.Future()
+        self._connected = asyncio.get_event_loop().create_future()
         self._client_task = asyncio.create_task(self._connect_and_subscribe(callback))
         await self._connected
 
     def disconnect(self) -> None:
-        """Cancels any active device client connection."""
+        """Cancels the active device client connection, if any."""
         if self._client_task is not None:
             self._client_task.cancel()
 
