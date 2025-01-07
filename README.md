@@ -32,6 +32,10 @@ async def main():
 
         device_client = LetPotDeviceClient(auth, devices[0].serial_number)
         await device_client.subscribe(lambda status: print(status))
+        await device_client.request_status_update()
+        
+        # do work, and finally
+        device_client.disconnect()
 
 
 asyncio.run(main())
