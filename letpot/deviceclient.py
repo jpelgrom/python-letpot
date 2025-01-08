@@ -113,7 +113,10 @@ class LetPotDeviceClient:
         self, message: aiomqtt.Message, callback: Callable[[LetPotDeviceStatus], None]
     ) -> None:
         """Process incoming messages from the broker."""
-        if self._converter is not None:
+        if self._converter is None:
+            return
+
+        try:
             status = self._converter.convert_hex_to_status(message.payload)
             if status is not None:
                 self._update_status = None
@@ -121,6 +124,8 @@ class LetPotDeviceClient:
                 callback(status)
                 if self._status_event is not None and not self._status_event.is_set():
                     self._status_event.set()
+        except Exception:  # noqa: BLE001
+            _LOGGER.warning("Exception while handling message, ignoring", exc_info=True)
 
     async def _publish(self, message: list[int]) -> None:
         """Publish a message to the device command topic."""
