@@ -309,3 +309,10 @@ class LetPotDeviceClient:
         """Set the alarm sound for this device (on/off)."""
         status = dataclasses.replace(self._get_publish_status(), system_sound=on)
         await self._publish_status(status)
+
+    async def set_water_mode(self, on: bool) -> None:
+        """Set the automatic water/nutrient mode for this device (on/off)."""
+        status = dataclasses.replace(
+            self._get_publish_status(), water_mode=1 if on else 0
+        )
+        await self._publish_status(status)
