@@ -13,7 +13,7 @@ import aiomqtt
 
 from letpot.converters import CONVERTERS, LetPotDeviceConverter
 from letpot.exceptions import LetPotAuthenticationException, LetPotException
-from letpot.models import AuthenticationInfo, LetPotDeviceStatus
+from letpot.models import AuthenticationInfo, DeviceFeature, LetPotDeviceStatus
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -44,6 +44,7 @@ class LetPotDeviceClient:
     _email: str
     _device_serial: str
     device_type: str
+    device_features: DeviceFeature = DeviceFeature(0)
     device_model_name: str | None = None
     device_model_code: str | None = None
 
@@ -61,6 +62,7 @@ class LetPotDeviceClient:
         for converter in CONVERTERS:
             if converter.supports_type(device_type):
                 self._converter = converter(device_type)
+                self.device_features = self._converter.supported_features()
                 device_model = self._converter.get_device_model()
                 if device_model is not None:
                     self.device_model_name = device_model[0]
