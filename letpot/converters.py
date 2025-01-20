@@ -8,7 +8,7 @@ from typing import Sequence
 from aiomqtt.types import PayloadType
 
 from letpot.exceptions import LetPotException
-from letpot.models import LetPotDeviceStatus
+from letpot.models import DeviceFeature, LetPotDeviceStatus
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -39,6 +39,10 @@ class LetPotDeviceConverter(ABC):
     @abstractmethod
     def get_device_model(self) -> tuple[str, str] | None:
         """Returns the device model name and code."""
+
+    @abstractmethod
+    def supported_features(self) -> DeviceFeature:
+        """Returns the device supported feature(s)."""
 
     @abstractmethod
     def get_current_status_message(self) -> list[int]:
@@ -90,6 +94,12 @@ class LPHx1Converter(LetPotDeviceConverter):
             return MODEL_SE
         else:
             return None
+
+    def supported_features(self) -> DeviceFeature:
+        features = DeviceFeature.PUMP_STATUS
+        if self._device_type in ["LPH21", "LPH31"]:
+            features |= DeviceFeature.LIGHT_BRIGHTNESS_LOW_HIGH
+        return features
 
     def get_current_status_message(self) -> list[int]:
         return [97, 1]
@@ -157,6 +167,9 @@ class IGSorAltConverter(LetPotDeviceConverter):
         else:
             return None
 
+    def supported_features(self) -> DeviceFeature:
+        return DeviceFeature(0)
+
     def get_current_status_message(self) -> list[int]:
         return [11, 1]
 
@@ -211,6 +224,17 @@ class LPH6xConverter(LetPotDeviceConverter):
 
     def get_device_model(self) -> tuple[str, str] | None:
         return MODEL_MAX
+
+    def supported_features(self) -> DeviceFeature:
+        features = (
+            DeviceFeature.LIGHT_BRIGHTNESS_LEVELS
+            | DeviceFeature.PUMP_AUTO
+            | DeviceFeature.TEMPERATURE
+            | DeviceFeature.WATER_LEVEL
+        )
+        if self._device_type != "LPH60":
+            features |= DeviceFeature.NUTRIENT_BUTTON
+        return features
 
     def get_current_status_message(self) -> list[int]:
         return [13, 1]
@@ -277,6 +301,16 @@ class LPH63Converter(LetPotDeviceConverter):
 
     def get_device_model(self) -> tuple[str, str] | None:
         return MODEL_MAX
+
+    def supported_features(self) -> DeviceFeature:
+        return (
+            DeviceFeature.LIGHT_BRIGHTNESS_LEVELS
+            | DeviceFeature.NUTRIENT_BUTTON
+            | DeviceFeature.PUMP_AUTO
+            | DeviceFeature.PUMP_STATUS
+            | DeviceFeature.TEMPERATURE
+            | DeviceFeature.WATER_LEVEL
+        )
 
     def get_current_status_message(self) -> list[int]:
         return [101, 1]

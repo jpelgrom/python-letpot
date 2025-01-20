@@ -2,7 +2,20 @@
 
 from dataclasses import dataclass
 from datetime import time
+from enum import IntFlag, auto
 import time as systime
+
+
+class DeviceFeature(IntFlag):
+    """Features that a LetPot device can support."""
+
+    LIGHT_BRIGHTNESS_LOW_HIGH = auto()
+    LIGHT_BRIGHTNESS_LEVELS = auto()
+    NUTRIENT_BUTTON = auto()
+    PUMP_AUTO = auto()
+    PUMP_STATUS = auto()
+    TEMPERATURE = auto()
+    WATER_LEVEL = auto()
 
 
 @dataclass
