@@ -23,9 +23,7 @@ SUPPORTED_DEVICE_TYPES = [
     "LPH63",
 ]
 DEVICE_STATUS = LetPotDeviceStatus(
-    errors=LetPotDeviceErrors(
-        low_water=True
-    ),
+    errors=LetPotDeviceErrors(low_water=True),
     light_brightness=500,
     light_mode=1,
     light_schedule_end=time(17, 0),
