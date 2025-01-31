@@ -67,7 +67,7 @@ class LetPotClient:
         json = await response.json()
 
         if json["ok"] is not True:
-            raise LetPotConnectionException(f"Status not OK: {json["message"]}")
+            raise LetPotConnectionException(f"Status not OK: {json['message']}")
 
         self._access_token = json["data"]["token"]["token"]
         self._access_token_expires = json["data"]["token"]["exp"]
@@ -101,7 +101,7 @@ class LetPotClient:
         json = await response.json()
 
         if json["ok"] is not True:
-            raise LetPotConnectionException(f"Status not OK: {json["message"]}")
+            raise LetPotConnectionException(f"Status not OK: {json['message']}")
 
         self._access_token = json["data"]["token"]["token"]
         self._access_token_expires = json["data"]["token"]["exp"]
