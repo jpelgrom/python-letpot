@@ -47,9 +47,20 @@ class LetPotDevice:
 
 
 @dataclass
+class LetPotDeviceErrors:
+    """Device errors model. Errors not supported by the device will be None."""
+
+    low_water: bool | None
+    low_nutrients: bool | None = None
+    pump_malfunction: bool | None = None
+    refill_error: bool | None = None
+
+
+@dataclass
 class LetPotDeviceStatus:
     """Device status model."""
 
+    errors: LetPotDeviceErrors
     light_brightness: int | None
     light_mode: int
     light_schedule_end: time
@@ -62,7 +73,6 @@ class LetPotDeviceStatus:
     raw: list[int]
     system_on: bool
     system_sound: bool | None
-    system_state: int
     temperature_unit: int | None = None
     temperature_value: int | None = None
     water_mode: int | None = None
