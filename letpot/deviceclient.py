@@ -12,7 +12,11 @@ from typing import Callable
 import aiomqtt
 
 from letpot.converters import CONVERTERS, LetPotDeviceConverter
-from letpot.exceptions import LetPotAuthenticationException, LetPotException
+from letpot.exceptions import (
+    LetPotAuthenticationException,
+    LetPotConnectionException,
+    LetPotException,
+)
 from letpot.models import AuthenticationInfo, DeviceFeature, LetPotDeviceStatus
 
 _LOGGER = logging.getLogger(__name__)
@@ -31,6 +35,7 @@ _SSL_CONTEXT = _create_ssl_context()
 class LetPotDeviceClient:
     """Client for connecting to LetPot device."""
 
+    AUTH_ERROR_RC = [4, 5, 134, 135]
     BROKER_HOST = "broker.letpot.net"
     MTU = 128
 
@@ -138,8 +143,17 @@ class LetPotDeviceClient:
             1, 19, message
         )  # maintype 1: data, subtype 19: custom
         topic = f"{self._device_serial}/cmd"
-        for publish_message in messages:
-            await self._client.publish(topic, payload=publish_message)
+        try:
+            for publish_message in messages:
+                await self._client.publish(topic, payload=publish_message)
+        except aiomqtt.MqttError as err:
+            if isinstance(err, aiomqtt.MqttCodeError) and err.rc in self.AUTH_ERROR_RC:
+                msg = "Publishing failed due to authentication error"
+                _LOGGER.error("%s: %s", msg, err)
+                raise LetPotAuthenticationException(msg) from err
+            else:
+                msg = "Publishing failed with unexpected error"
+                raise LetPotConnectionException(msg) from err
 
     def _get_publish_status(self) -> LetPotDeviceStatus:
         """Get the device status for publishing (pending update or latest)."""
@@ -210,7 +224,7 @@ class LetPotDeviceClient:
                 self._client = None
 
                 if isinstance(err, aiomqtt.MqttCodeError):
-                    if err.rc in [4, 5, 134, 135]:
+                    if err.rc in self.AUTH_ERROR_RC:
                         msg = "MQTT auth error"
                         _LOGGER.error("%s: %s", msg, err)
                         auth_exception = LetPotAuthenticationException(msg)
