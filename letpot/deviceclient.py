@@ -17,7 +17,12 @@ from letpot.exceptions import (
     LetPotConnectionException,
     LetPotException,
 )
-from letpot.models import AuthenticationInfo, DeviceFeature, LetPotDeviceStatus
+from letpot.models import (
+    AuthenticationInfo,
+    DeviceFeature,
+    TemperatureUnit,
+    LetPotDeviceStatus,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -324,6 +329,11 @@ class LetPotDeviceClient:
     async def set_sound(self, on: bool) -> None:
         """Set the alarm sound for this device (on/off)."""
         status = dataclasses.replace(self._get_publish_status(), system_sound=on)
+        await self._publish_status(status)
+
+    async def set_temperature_unit(self, unit: TemperatureUnit) -> None:
+        """Set the temperature unit for this device (Celsius/Fahrenheit)."""
+        status = dataclasses.replace(self._get_publish_status(), temperature_unit=unit)
         await self._publish_status(status)
 
     async def set_water_mode(self, on: bool) -> None:
