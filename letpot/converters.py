@@ -8,7 +8,12 @@ from typing import Sequence
 from aiomqtt.types import PayloadType
 
 from letpot.exceptions import LetPotException
-from letpot.models import DeviceFeature, LetPotDeviceErrors, LetPotDeviceStatus
+from letpot.models import (
+    DeviceFeature,
+    TemperatureUnit,
+    LetPotDeviceErrors,
+    LetPotDeviceStatus,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -243,6 +248,7 @@ class LPH6xConverter(LetPotDeviceConverter):
             DeviceFeature.LIGHT_BRIGHTNESS_LEVELS
             | DeviceFeature.PUMP_AUTO
             | DeviceFeature.TEMPERATURE
+            | DeviceFeature.TEMPERATURE_SET_UNIT
             | DeviceFeature.WATER_LEVEL
         )
         if self._device_type != "LPH60":
@@ -270,7 +276,7 @@ class LPH6xConverter(LetPotDeviceConverter):
             if status.light_brightness is not None
             else 0,
             status.light_brightness % 256 if status.light_brightness is not None else 0,
-            status.temperature_unit if status.temperature_unit is not None else 0,
+            1 if status.temperature_unit is TemperatureUnit.CELSIUS else 0,
             1 if status.system_sound is True else 0,
             1 if status.pump_nutrient is True else 0,
         ]
@@ -299,7 +305,7 @@ class LPH6xConverter(LetPotDeviceConverter):
                 low_nutrients=True if data[7] & 1 else False,
                 refill_error=True if data[7] & 4 else False,
             ),
-            temperature_unit=data[24],
+            temperature_unit=TemperatureUnit(data[24]),
             temperature_value=256 * data[22] + data[23],
             water_level=256 * data[20] + data[21],
             water_mode=data[17],
@@ -376,7 +382,7 @@ class LPH63Converter(LetPotDeviceConverter):
                 low_nutrients=True if data[7] & 1 else False,
                 refill_error=True if data[7] & 4 else False,
             ),
-            temperature_unit=data[24],
+            temperature_unit=TemperatureUnit(data[24]),
             temperature_value=256 * data[22] + data[23],
             water_level=256 * data[20] + data[21],
             water_mode=data[17],

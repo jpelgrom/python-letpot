@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 from datetime import time
-from enum import IntFlag, auto
+from enum import IntEnum, IntFlag, auto
 import time as systime
 
 
@@ -15,7 +15,15 @@ class DeviceFeature(IntFlag):
     PUMP_AUTO = auto()
     PUMP_STATUS = auto()
     TEMPERATURE = auto()
+    TEMPERATURE_SET_UNIT = auto()
     WATER_LEVEL = auto()
+
+
+class TemperatureUnit(IntEnum):
+    """Device temperate sensor/display unit."""
+
+    FAHRENHEIT = 0
+    CELSIUS = 1
 
 
 @dataclass
@@ -73,7 +81,7 @@ class LetPotDeviceStatus:
     raw: list[int]
     system_on: bool
     system_sound: bool | None
-    temperature_unit: int | None = None
+    temperature_unit: TemperatureUnit | None = None
     temperature_value: int | None = None
     water_mode: int | None = None
     water_level: int | None = None
