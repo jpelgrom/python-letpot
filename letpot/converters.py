@@ -8,7 +8,7 @@ from typing import Sequence
 from aiomqtt.types import PayloadType
 
 from letpot.exceptions import LetPotException
-from letpot.models import DeviceFeature, LetPotDeviceStatus
+from letpot.models import DeviceFeature, LetPotDeviceErrors, LetPotDeviceStatus
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -130,6 +130,11 @@ class LPHx1Converter(LetPotDeviceConverter):
             _LOGGER.debug("Invalid message received, ignoring: %s", message)
             return None
 
+        if self._device_type == "LPH21":
+            error_pump_malfunction = None
+        else:
+            error_pump_malfunction = True if data[7] & 2 else False
+
         return LetPotDeviceStatus(
             raw=data,
             light_brightness=256 * data[17] + data[18],
@@ -143,7 +148,10 @@ class LPHx1Converter(LetPotDeviceConverter):
             pump_status=data[19],
             system_on=data[8] == 1,
             system_sound=data[20] == 1 if data[20] is not None else None,
-            system_state=data[7],
+            errors=LetPotDeviceErrors(
+                low_water=True if data[7] & 1 else False,
+                pump_malfunction=error_pump_malfunction,
+            ),
         )
 
     def get_light_brightness_levels(self) -> list[int]:
@@ -195,6 +203,11 @@ class IGSorAltConverter(LetPotDeviceConverter):
             _LOGGER.debug("Invalid message received, ignoring: %s", message)
             return None
 
+        if self._device_type == "IGS01":
+            error_low_water = None
+        else:
+            error_low_water = True if data[7] & 1 else False
+
         return LetPotDeviceStatus(
             raw=data,
             light_brightness=None,
@@ -208,7 +221,7 @@ class IGSorAltConverter(LetPotDeviceConverter):
             pump_status=None,
             system_on=data[8] == 1,
             system_sound=data[17] == 1 if data[17] is not None else None,
-            system_state=data[7],
+            errors=LetPotDeviceErrors(low_water=error_low_water),
         )
 
     def get_light_brightness_levels(self) -> list[int]:
@@ -281,7 +294,11 @@ class LPH6xConverter(LetPotDeviceConverter):
             pump_status=None,
             system_on=data[8] == 1,
             system_sound=data[25] == 1 if data[25] is not None else None,
-            system_state=data[7],
+            errors=LetPotDeviceErrors(
+                low_water=True if data[7] & 2 else False,
+                low_nutrients=True if data[7] & 1 else False,
+                refill_error=True if data[7] & 4 else False,
+            ),
             temperature_unit=data[24],
             temperature_value=256 * data[22] + data[23],
             water_level=256 * data[20] + data[21],
@@ -354,7 +371,11 @@ class LPH63Converter(LetPotDeviceConverter):
             pump_status=data[26],
             system_on=data[8] == 1,
             system_sound=None,
-            system_state=data[7],
+            errors=LetPotDeviceErrors(
+                low_water=True if data[7] & 2 else False,
+                low_nutrients=True if data[7] & 1 else False,
+                refill_error=True if data[7] & 4 else False,
+            ),
             temperature_unit=data[24],
             temperature_value=256 * data[22] + data[23],
             water_level=256 * data[20] + data[21],

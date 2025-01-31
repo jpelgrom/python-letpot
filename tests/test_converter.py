@@ -6,7 +6,7 @@ import pytest
 
 from letpot.converters import CONVERTERS, LPHx1Converter, LetPotDeviceConverter
 from letpot.exceptions import LetPotException
-from letpot.models import LetPotDeviceStatus
+from letpot.models import LetPotDeviceErrors, LetPotDeviceStatus
 
 
 SUPPORTED_DEVICE_TYPES = [
@@ -23,6 +23,9 @@ SUPPORTED_DEVICE_TYPES = [
     "LPH63",
 ]
 DEVICE_STATUS = LetPotDeviceStatus(
+    errors=LetPotDeviceErrors(
+        low_water=True
+    ),
     light_brightness=500,
     light_mode=1,
     light_schedule_end=time(17, 0),
@@ -35,7 +38,6 @@ DEVICE_STATUS = LetPotDeviceStatus(
     raw=[77, 0, 1, 18, 98, 1, 0, 1, 1, 1, 1, 0, 0, 7, 30, 17, 0, 1, 244, 0, 0, 0],
     system_on=True,
     system_sound=False,
-    system_state=1,
     temperature_unit=None,
     temperature_value=None,
     water_mode=None,
