@@ -95,3 +95,17 @@ class LetPotDeviceStatus:
     temperature_value: int | None = None
     water_mode: int | None = None
     water_level: int | None = None
+    wifi_state: int | None = None
+    pump_on: bool | None = None
+    pump_duration: int | None = None
+    pump_countdown: list[int] | None = None
+    pump_cycle_on: bool | None = None
+    pump_cycle_duration: int | None = None
+    pump_cycle_workingduration: int | None = None
+    pump_cycle_mode: int | None = None
+    pump_cycle_workinginterval: int | None = None
+    pump_cycle_restinterval: int | None = None
+    pump_works_latest_reason: int | None = None
+    pump_works_latest_time: list[int] | None = None
+    pump_works_next_time: list[int] | None = None
+    pump_cycle_skip_water: int | None = None

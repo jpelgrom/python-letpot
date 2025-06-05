@@ -18,6 +18,7 @@ from letpot.models import (
 _LOGGER = logging.getLogger(__name__)
 
 MODEL_AIR = ("LetPot Air", "LPH-AIR")
+MODEL_DI = ("LetPot Automatic Watering System", "DI")
 MODEL_MAX = ("LetPot Max", "LPH-MAX")
 MODEL_MINI = ("LetPot Mini", "LPH-MINI")
 MODEL_PRO = ("LetPot Pro", "LPH-PRO")
@@ -392,9 +393,90 @@ class LPH63Converter(LetPotDeviceConverter):
         return [0, 125, 250, 375, 500, 625, 750, 875, 1000]
 
 
+class ISEConverter(LetPotDeviceConverter):
+    """Converters and info for device type ISE05, ISE06 (Automatic Watering System)."""
+
+    @staticmethod
+    def supports_type(device_type: str) -> bool:
+        return device_type in ["ISE05", "ISE06"]
+
+    def get_device_model(self) -> tuple[str, str] | None:
+        return MODEL_DI
+
+    def supported_features(self) -> DeviceFeature:
+        return DeviceFeature(0)
+
+    def get_current_status_message(self) -> list[int]:
+        return [65, 1]
+
+    def get_update_status_message(self, status: LetPotDeviceStatus) -> list[int]:
+        return [
+            65,
+            2,
+            1 if status.pump_mode > 0 else 0,
+            1 if status.pump_cycle_on is True else 0,
+            math.floor((status.pump_duration or 0) / 256),
+            (status.pump_duration or 0) % 256,
+            math.floor((status.pump_cycle_duration or 0) / 256),
+            (status.pump_cycle_duration or 0) % 256,
+            math.floor((status.pump_cycle_workingduration or 0) / 256),
+            (status.pump_cycle_workingduration or 0) % 256,
+            status.pump_cycle_mode or 0,
+            math.floor((status.pump_cycle_workinginterval or 0) / 256),
+            (status.pump_cycle_workinginterval or 0) % 256,
+            math.floor((status.pump_cycle_restinterval or 0) / 256),
+            (status.pump_cycle_restinterval or 0) % 256,
+        ]
+
+    def convert_hex_to_status(self, message: PayloadType) -> LetPotDeviceStatus | None:
+        data = self._hex_bytes_to_int_array(message)
+        if data is None or data[4] != 66 or data[5] != 1:
+            _LOGGER.debug("Invalid message received, ignoring: %s", message)
+            return None
+
+        if self._device_type == "ISE05":
+            pump_cycle_skipwater = None
+        else:
+            pump_cycle_skipwater = math.floor((256 * data[35] + data[36]) / 60)
+
+        return LetPotDeviceStatus(
+            raw=data,
+            light_brightness=None,
+            light_mode=0,
+            light_schedule_end=time(),
+            light_schedule_start=time(),
+            online=True,
+            plant_days=0,
+            pump_mode=data[9],
+            pump_nutrient=None,
+            pump_status=None,
+            system_on=data[7] == 1,
+            system_sound=None,
+            errors=LetPotDeviceErrors(low_water=None),
+            wifi_state=data[6],
+            pump_on=data[8] == 1,
+            pump_duration=256 * data[10] + data[11],
+            pump_countdown=data[12:16],
+            pump_cycle_on=data[16] == 1,
+            pump_cycle_duration=256 * data[17] + data[18],
+            pump_cycle_workingduration=256 * data[19] + data[20],
+            pump_cycle_mode=data[21],
+            pump_cycle_workinginterval=256 * data[22] + data[23],
+            pump_cycle_restinterval=256 * data[24] + data[25],
+            pump_works_latest_reason=data[26],
+            pump_works_latest_time=data[27:31],
+            pump_works_next_time=data[31:35],
+            pump_cycle_skip_water=pump_cycle_skipwater,
+        )
+
+    def get_light_brightness_levels(self) -> list[int]:
+        return []
+
+
 CONVERTERS: Sequence[type[LetPotDeviceConverter]] = [
     LPHx1Converter,
     IGSorAltConverter,
     LPH6xConverter,
     LPH63Converter,
+    ISEConverter,
 ]
