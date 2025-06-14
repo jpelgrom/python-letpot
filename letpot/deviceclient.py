@@ -47,6 +47,7 @@ class LetPotDeviceClient:
     _client: aiomqtt.Client | None = None
     _client_task: asyncio.Task | None = None
     _connected: asyncio.Future[bool] | None = None
+    _topics: list[str] = []
     _converter: LetPotDeviceConverter | None = None
     _message_id: int = 0
 
@@ -192,10 +193,8 @@ class LetPotDeviceClient:
         )
         await self._publish(self._converter.get_update_status_message(status))
 
-    async def _connect_and_subscribe(
-        self, callback: Callable[[LetPotDeviceStatus], None]
-    ) -> None:
-        """Subscribe to state updates for this device."""
+    async def _connect(self, callback: Callable[[LetPotDeviceStatus], None]) -> None:
+        """Connect to the broker for device communication."""
         username = f"{self._email}__letpot_v3"
         password = sha256(
             f"{self._user_id}|{md5(username.encode()).hexdigest()}".encode()
@@ -203,6 +202,7 @@ class LetPotDeviceClient:
         connection_attempts = 0
         while self._converter is not None:
             try:
+                _LOGGER.debug("Connecting to MQTT broker")
                 async with aiomqtt.Client(
                     hostname=self.BROKER_HOST,
                     port=443,
@@ -219,7 +219,11 @@ class LetPotDeviceClient:
                     self._message_id = 0
                     connection_attempts = 0
 
-                    await client.subscribe(f"{self._device_serial}/data")
+                    # Restore active subscriptions
+                    for topic in self._topics:
+                        _LOGGER.debug(f"Restoring subscription to {topic}")
+                        await client.subscribe(topic)
+
                     if self._connected is not None and not self._connected.done():
                         self._connected.set_result(True)
 
@@ -251,16 +255,53 @@ class LetPotDeviceClient:
                 if self._connected is not None and not self._connected.done():
                     self._connected.set_result(False)
 
-    async def subscribe(self, callback: Callable[[LetPotDeviceStatus], None]) -> None:
-        """Connect to the device client and wait for connection or raise an authentication failure."""
-        self._connected = asyncio.get_event_loop().create_future()
-        self._client_task = asyncio.create_task(self._connect_and_subscribe(callback))
-        await self._connected
-
-    def disconnect(self) -> None:
+    def _disconnect(self) -> None:
         """Cancels the active device client connection, if any."""
         if self._client_task is not None:
             self._client_task.cancel()
+
+    async def subscribe(
+        self, topic: str, callback: Callable[[LetPotDeviceStatus], None]
+    ) -> None:
+        """Subscribe to devices updates, connecting to the device client and waiting for connection if required."""
+        if (
+            self._connected is None
+            or self._connected.cancelled()
+            or (
+                self._connected.done()
+                and (
+                    self._connected.exception() is not None
+                    or self._connected.result() is False
+                )
+            )
+        ):
+            self._connected = asyncio.get_event_loop().create_future()
+            self._client_task = asyncio.create_task(self._connect(callback))
+            await self._connected
+        elif not self._connected.done():
+            await self._connected
+
+        try:
+            # TODO should take device serial instead
+            _LOGGER.debug(f"Subscribing to {topic}")
+            await self._client.subscribe(topic)
+            self._topics.append(topic)
+        except aiomqtt.MqttError as err:
+            if len(self._topics) == 0:
+                self._disconnect()
+            raise err
+
+    async def unsubscribe(self, topic: str) -> None:
+        """Unsubscribes from device updates, and cancels the active device client connection if required."""
+        # TODO should take device serial instead
+        if topic in self._topics:
+            _LOGGER.debug(f"Unsubscribing from {topic}")
+            await self._client.unsubscribe(topic)
+            self._topics.remove(topic)
+
+            if len(self._topics) == 0:
+                _LOGGER.debug("Disconnecting because no more topics remain")
+                self._disconnect()
 
     def get_light_brightness_levels(self) -> list[int]:
         """Get the light brightness levels for this device."""
