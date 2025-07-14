@@ -26,10 +26,14 @@ ruff = "0.12.3"
 pytest = "8.4.1"
 pytest-cov = "6.2.1"
 mypy = "1.17.0"
+pytest-asyncio = "1.0.0"
 
 [tool.poetry.urls]
 Changelog = "https://github.com/jpelgrom/python-letpot/releases"
 Issues = "https://github.com/jpelgrom/python-letpot/issues"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
 
 [build-system]
 requires = ["poetry-core"]

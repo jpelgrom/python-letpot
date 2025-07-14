@@ -252,13 +252,22 @@ class LetPotDeviceClient:
                 await asyncio.sleep(reconnect_interval)
             finally:
                 self._client = None
-                if self._connected is not None and not self._connected.done():
-                    self._connected.set_result(False)
+                if self._connected is not None:
+                    if not self._connected.done():
+                        self._connected.set_result(False)
+                    elif (
+                        self._connected.exception() is None
+                    ):  # Shutdown because task ended
+                        self._connected = None
 
-    def _disconnect(self) -> None:
+    async def _disconnect(self) -> None:
         """Cancels the active device client connection, if any."""
         if self._client_task is not None:
             self._client_task.cancel()
+            try:
+                await self._client_task
+            except asyncio.CancelledError:
+                _LOGGER.debug("MQTT task succesfully shutdown")
 
     async def subscribe(
         self, topic: str, callback: Callable[[LetPotDeviceStatus], None]
@@ -283,12 +292,14 @@ class LetPotDeviceClient:
 
         try:
             # TODO should take device serial instead
+            assert self._client is not None
+
             _LOGGER.debug(f"Subscribing to {topic}")
             await self._client.subscribe(topic)
             self._topics.append(topic)
         except aiomqtt.MqttError as err:
             if len(self._topics) == 0:
-                self._disconnect()
+                await self._disconnect()
             raise err
 
     async def unsubscribe(self, topic: str) -> None:
@@ -296,12 +307,13 @@ class LetPotDeviceClient:
         # TODO should take device serial instead
         if topic in self._topics:
             _LOGGER.debug(f"Unsubscribing from {topic}")
-            await self._client.unsubscribe(topic)
+            if self._client is not None:
+                await self._client.unsubscribe(topic)
             self._topics.remove(topic)
 
             if len(self._topics) == 0:
                 _LOGGER.debug("Disconnecting because no more topics remain")
-                self._disconnect()
+                await self._disconnect()
 
     def get_light_brightness_levels(self) -> list[int]:
         """Get the light brightness levels for this device."""
