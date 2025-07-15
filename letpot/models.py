@@ -55,6 +55,16 @@ class LetPotDevice:
 
 
 @dataclass
+class LetPotDeviceInfo:
+    """Information about a device model, based on the serial number."""
+
+    model: str
+    model_name: str | None
+    model_code: str | None
+    features: DeviceFeature
+
+
+@dataclass
 class LetPotDeviceErrors:
     """Device errors model. Errors not supported by the device will be None."""
 
