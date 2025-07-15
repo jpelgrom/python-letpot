@@ -140,7 +140,7 @@ class LetPotClient:
                     name=device["name"],
                     device_type=device["dev_type"],
                     is_online=device["is_online"],
-                    is_remote=device["is_remote"],
+                    is_remote=device.get("is_remote", None),
                 )
             )
 

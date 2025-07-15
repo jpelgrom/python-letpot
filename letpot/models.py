@@ -51,7 +51,7 @@ class LetPotDevice:
     name: str
     device_type: str
     is_online: bool
-    is_remote: bool
+    is_remote: bool | None
 
 
 @dataclass
