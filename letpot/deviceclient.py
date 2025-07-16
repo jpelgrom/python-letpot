@@ -19,7 +19,7 @@ from letpot.exceptions import (
 )
 from letpot.models import (
     AuthenticationInfo,
-    DeviceFeature,
+    LetPotDeviceInfo,
     TemperatureUnit,
     LetPotDeviceStatus,
 )
@@ -47,37 +47,31 @@ class LetPotDeviceClient:
     _client: aiomqtt.Client | None = None
     _client_task: asyncio.Task | None = None
     _connected: asyncio.Future[bool] | None = None
-    _converter: LetPotDeviceConverter | None = None
+    _topics: list[str] = []
     _message_id: int = 0
 
     _user_id: str
     _email: str
-    _device_serial: str
-    device_type: str
-    device_features: DeviceFeature = DeviceFeature(0)
-    device_model_name: str | None = None
-    device_model_code: str | None = None
 
-    _update_status: LetPotDeviceStatus | None = None
-    _update_clear: asyncio.Task | None = None
-    _status_event: asyncio.Event | None = None
-    last_status: LetPotDeviceStatus | None = None
+    _device_callbacks: dict[str, Callable[[LetPotDeviceStatus], None]] = {}
+    _device_status_last: dict[str, LetPotDeviceStatus | None] = {}
+    _device_status_pending: dict[str, LetPotDeviceStatus | None] = {}
+    _device_status_timeout: dict[str, asyncio.Task | None] = {}
+    _device_status_event: dict[str, asyncio.Event | None] = {}
 
-    def __init__(self, info: AuthenticationInfo, device_serial: str) -> None:
+    def __init__(self, info: AuthenticationInfo) -> None:
         self._user_id = info.user_id
         self._email = info.email
-        self._device_serial = device_serial
 
-        device_type = self._device_serial[:5]
+    def _converter(self, serial: str) -> LetPotDeviceConverter:
+        """Get the device converter for the current serial number."""
+        device_type = serial[:5]
         for converter in CONVERTERS:
             if converter.supports_type(device_type):
-                self._converter = converter(device_type)
-                self.device_features = self._converter.supported_features()
-                device_model = self._converter.get_device_model()
-                if device_model is not None:
-                    self.device_model_name = device_model[0]
-                    self.device_model_code = device_model[1]
-                break
+                return converter(device_type)
+        raise LetPotException("No converter available for device type")
+
+    # region MQTT internals
 
     def _generate_client_id(self) -> str:
         """Generate a client identifier for the connection."""
@@ -121,25 +115,27 @@ class LetPotDeviceClient:
 
         return packets
 
-    def _handle_message(
-        self, message: aiomqtt.Message, callback: Callable[[LetPotDeviceStatus], None]
-    ) -> None:
+    def _handle_message(self, message: aiomqtt.Message) -> None:
         """Process incoming messages from the broker."""
-        if self._converter is None:
-            return
-
         try:
-            status = self._converter.convert_hex_to_status(message.payload)
-            if status is not None:
-                self._update_status = None
-                self.last_status = status
-                callback(status)
-                if self._status_event is not None and not self._status_event.is_set():
-                    self._status_event.set()
-        except Exception:  # noqa: BLE001
-            _LOGGER.warning("Exception while handling message, ignoring", exc_info=True)
+            serial = message.topic.value.split("/")[0]
+            status = self._converter(serial).convert_hex_to_status(message.payload)
 
-    async def _publish(self, message: list[int]) -> None:
+            if status is not None:
+                self._device_status_pending[serial] = None
+                self._device_status_last[serial] = status
+                if (callback := self._device_callbacks.get(serial)) is not None:
+                    callback(status)
+                event = self._device_status_event.get(serial)
+                if event is not None and not event.is_set():
+                    event.set()
+        except Exception:  # noqa: BLE001
+            _LOGGER.warning(
+                f"Exception while handling message for {message.topic.value}, ignoring",
+                exc_info=True,
+            )
+
+    async def _publish(self, serial: str, message: list[int]) -> None:
         """Publish a message to the device command topic."""
         if self._client is None:
             raise LetPotException("Missing client to publish message with")
@@ -147,7 +143,7 @@ class LetPotDeviceClient:
         messages = self._generate_message_packets(
             1, 19, message
         )  # maintype 1: data, subtype 19: custom
-        topic = f"{self._device_serial}/cmd"
+        topic = f"{serial}/cmd"
         try:
             for publish_message in messages:
                 await self._client.publish(topic, payload=publish_message)
@@ -160,49 +156,49 @@ class LetPotDeviceClient:
                 msg = "Publishing failed with unexpected error"
                 raise LetPotConnectionException(msg) from err
 
-    def _get_publish_status(self) -> LetPotDeviceStatus:
+    def _get_publish_status(self, serial: str) -> LetPotDeviceStatus:
         """Get the device status for publishing (pending update or latest)."""
-        if self._update_status is not None:
-            return self._update_status
-        elif self.last_status is not None:
-            return self.last_status
-        else:
-            raise LetPotException("Client doesn't have a status for publishing")
+        if (status := self._device_status_pending.get(serial)) is not None:
+            return status
+        if (status := self._device_status_last.get(serial)) is not None:
+            return status
+        raise LetPotException("Client doesn't have a status for publishing")
 
-    async def _clear_update_status(self) -> None:
-        """Clear the update status after a timeout, to prevent an out of date status."""
+    async def _clear_pending_status(self, serial: str) -> None:
+        """Clear the pending status after a timeout, to prevent an out of date status."""
         await asyncio.sleep(5)
-        self._update_status = None
-        self._update_clear = None
+        self._device_status_pending[serial] = None
+        self._device_status_timeout[serial] = None
 
-    async def _publish_status(self, status: LetPotDeviceStatus) -> None:
+    async def _publish_status(self, serial: str, status: LetPotDeviceStatus) -> None:
         """Set the device status."""
-        if self._converter is None or self._client is None:
+        if self._client is None:
             raise LetPotException("Missing converter/client to publish message with")
 
-        if self._update_clear is not None:
-            self._update_clear.cancel()
+        if (task := self._device_status_timeout.get(serial)) is not None:
+            task.cancel()
             try:
-                await self._update_clear
+                await task
             except asyncio.CancelledError:
                 pass
-        self._update_status = status
-        self._update_clear = asyncio.get_event_loop().create_task(
-            self._clear_update_status()
+        self._device_status_pending[serial] = status
+        self._device_status_timeout[serial] = asyncio.get_event_loop().create_task(
+            self._clear_pending_status(serial)
         )
-        await self._publish(self._converter.get_update_status_message(status))
+        await self._publish(
+            serial, self._converter(serial).get_update_status_message(status)
+        )
 
-    async def _connect_and_subscribe(
-        self, callback: Callable[[LetPotDeviceStatus], None]
-    ) -> None:
-        """Subscribe to state updates for this device."""
+    async def _connect(self) -> None:
+        """Connect to the broker for device communication."""
         username = f"{self._email}__letpot_v3"
         password = sha256(
             f"{self._user_id}|{md5(username.encode()).hexdigest()}".encode()
         ).hexdigest()
         connection_attempts = 0
-        while self._converter is not None:
+        while True:
             try:
+                _LOGGER.debug("Connecting to MQTT broker")
                 async with aiomqtt.Client(
                     hostname=self.BROKER_HOST,
                     port=443,
@@ -219,12 +215,16 @@ class LetPotDeviceClient:
                     self._message_id = 0
                     connection_attempts = 0
 
-                    await client.subscribe(f"{self._device_serial}/data")
+                    # Restore active subscriptions
+                    for topic in self._topics:
+                        _LOGGER.debug(f"Restoring subscription to {topic}")
+                        await client.subscribe(topic)
+
                     if self._connected is not None and not self._connected.done():
                         self._connected.set_result(True)
 
                     async for message in client.messages:
-                        self._handle_message(message, callback)
+                        self._handle_message(message)
             except aiomqtt.MqttError as err:
                 self._client = None
 
@@ -248,58 +248,130 @@ class LetPotDeviceClient:
                 await asyncio.sleep(reconnect_interval)
             finally:
                 self._client = None
-                if self._connected is not None and not self._connected.done():
-                    self._connected.set_result(False)
+                if self._connected is not None:
+                    if not self._connected.done():
+                        self._connected.set_result(False)
+                    elif (
+                        self._connected.exception() is None
+                    ):  # Shutdown because task ended
+                        self._connected = None
 
-    async def subscribe(self, callback: Callable[[LetPotDeviceStatus], None]) -> None:
-        """Connect to the device client and wait for connection or raise an authentication failure."""
-        self._connected = asyncio.get_event_loop().create_future()
-        self._client_task = asyncio.create_task(self._connect_and_subscribe(callback))
-        await self._connected
-
-    def disconnect(self) -> None:
+    async def _disconnect(self) -> None:
         """Cancels the active device client connection, if any."""
         if self._client_task is not None:
             self._client_task.cancel()
+            try:
+                await self._client_task
+            except asyncio.CancelledError:
+                _LOGGER.debug("MQTT task succesfully shutdown")
 
-    def get_light_brightness_levels(self) -> list[int]:
+    # endregion
+
+    # region (Un)subscribing
+
+    async def subscribe(
+        self, serial: str, callback: Callable[[LetPotDeviceStatus], None]
+    ) -> None:
+        """Subscribe to devices updates, connecting to the device client and waiting for connection if required."""
+        if (
+            self._connected is None
+            or self._connected.cancelled()
+            or (
+                self._connected.done()
+                and (
+                    self._connected.exception() is not None
+                    or self._connected.result() is False
+                )
+            )
+        ):
+            self._connected = asyncio.get_event_loop().create_future()
+            self._client_task = asyncio.create_task(self._connect())
+            await self._connected
+        elif not self._connected.done():
+            await self._connected
+
+        try:
+            assert self._client is not None
+            topic = f"{serial}/data"
+
+            _LOGGER.debug(f"Subscribing to {topic}")
+            await self._client.subscribe(topic)
+            self._topics.append(topic)
+            self._device_callbacks[serial] = callback
+        except aiomqtt.MqttError as err:
+            if len(self._topics) == 0:
+                await self._disconnect()
+            raise err
+
+    async def unsubscribe(self, serial: str) -> None:
+        """Unsubscribes from device updates, and cancels the active device client connection if required."""
+        topic = f"{serial}/data"
+        if topic in self._topics:
+            _LOGGER.debug(f"Unsubscribing from {topic}")
+            if self._client is not None:
+                await self._client.unsubscribe(topic)
+            self._topics.remove(topic)
+            self._device_callbacks.pop(serial, None)
+
+            if len(self._topics) == 0:
+                _LOGGER.debug("Disconnecting because no more topics remain")
+                await self._disconnect()
+
+    # endregion
+
+    # region Device functions
+
+    def device_info(self, serial: str) -> LetPotDeviceInfo:
+        """Get information about a device model."""
+        converter = self._converter(serial)
+        device_model = converter.get_device_model()
+        return LetPotDeviceInfo(
+            model=serial[:5],
+            model_name=device_model[0] if device_model else None,
+            model_code=device_model[1] if device_model else None,
+            features=converter.supported_features(),
+        )
+
+    def get_light_brightness_levels(self, serial: str) -> list[int]:
         """Get the light brightness levels for this device."""
-        if self._converter is None:
-            return []
-        else:
-            return self._converter.get_light_brightness_levels()
+        return self._converter(serial).get_light_brightness_levels()
 
-    async def request_status_update(self) -> None:
+    async def request_status_update(self, serial: str) -> None:
         """Request the device to send the current device status."""
-        if self._converter is None:
-            raise LetPotException("Missing converter to build request message")
-        await self._publish(self._converter.get_current_status_message())
+        await self._publish(
+            serial, self._converter(serial).get_current_status_message()
+        )
 
-    async def get_current_status(self) -> LetPotDeviceStatus | None:
+    async def get_current_status(self, serial: str) -> LetPotDeviceStatus | None:
         """Request an update of and return the current device status."""
-        self._status_event = asyncio.Event()
-        await self.request_status_update()
-        await self._status_event.wait()
-        return self.last_status
+        status_event = asyncio.Event()
+        self._device_status_event[serial] = status_event
+        await self.request_status_update(serial)
+        await status_event.wait()
+        return self._device_status_last.get(serial)
 
-    async def set_light_brightness(self, level: int) -> None:
+    async def set_light_brightness(self, serial: str, level: int) -> None:
         """Set the light brightness for this device (brightness level)."""
-        if level not in self.get_light_brightness_levels():
+        if level not in self.get_light_brightness_levels(serial):
             raise LetPotException(
                 f"Device doesn't support setting light brightness to {level}"
             )
 
-        status = dataclasses.replace(self._get_publish_status(), light_brightness=level)
-        await self._publish_status(status)
+        status = dataclasses.replace(
+            self._get_publish_status(serial), light_brightness=level
+        )
+        await self._publish_status(serial, status)
 
-    async def set_light_mode(self, mode: int) -> None:
+    async def set_light_mode(self, serial: str, mode: int) -> None:
         """Set the light mode for this device (flower/vegetable)."""
-        status = dataclasses.replace(self._get_publish_status(), light_mode=mode)
-        await self._publish_status(status)
+        status = dataclasses.replace(self._get_publish_status(serial), light_mode=mode)
+        await self._publish_status(serial, status)
 
-    async def set_light_schedule(self, start: time | None, end: time | None) -> None:
+    async def set_light_schedule(
+        self, serial: str, start: time | None, end: time | None
+    ) -> None:
         """Set the light schedule for this device (start time and/or end time)."""
-        use_status = self._get_publish_status()
+        use_status = self._get_publish_status(serial)
         start_time = use_status.light_schedule_start if start is None else start
         end_time = use_status.light_schedule_end if end is None else end
         status = dataclasses.replace(
@@ -307,38 +379,42 @@ class LetPotDeviceClient:
             light_schedule_start=start_time,
             light_schedule_end=end_time,
         )
-        await self._publish_status(status)
+        await self._publish_status(serial, status)
 
-    async def set_plant_days(self, days: int) -> None:
+    async def set_plant_days(self, serial: str, days: int) -> None:
         """Set the plant days counter for this device (number of days)."""
-        status = dataclasses.replace(self._get_publish_status(), plant_days=days)
-        await self._publish_status(status)
+        status = dataclasses.replace(self._get_publish_status(serial), plant_days=days)
+        await self._publish_status(serial, status)
 
-    async def set_power(self, on: bool) -> None:
+    async def set_power(self, serial: str, on: bool) -> None:
         """Set the general power for this device (on/off)."""
-        status = dataclasses.replace(self._get_publish_status(), system_on=on)
-        await self._publish_status(status)
+        status = dataclasses.replace(self._get_publish_status(serial), system_on=on)
+        await self._publish_status(serial, status)
 
-    async def set_pump_mode(self, on: bool) -> None:
+    async def set_pump_mode(self, serial: str, on: bool) -> None:
         """Set the pump mode for this device (on (scheduled)/off)."""
         status = dataclasses.replace(
-            self._get_publish_status(), pump_mode=1 if on else 0
+            self._get_publish_status(serial), pump_mode=1 if on else 0
         )
-        await self._publish_status(status)
+        await self._publish_status(serial, status)
 
-    async def set_sound(self, on: bool) -> None:
+    async def set_sound(self, serial: str, on: bool) -> None:
         """Set the alarm sound for this device (on/off)."""
-        status = dataclasses.replace(self._get_publish_status(), system_sound=on)
-        await self._publish_status(status)
+        status = dataclasses.replace(self._get_publish_status(serial), system_sound=on)
+        await self._publish_status(serial, status)
 
-    async def set_temperature_unit(self, unit: TemperatureUnit) -> None:
+    async def set_temperature_unit(self, serial: str, unit: TemperatureUnit) -> None:
         """Set the temperature unit for this device (Celsius/Fahrenheit)."""
-        status = dataclasses.replace(self._get_publish_status(), temperature_unit=unit)
-        await self._publish_status(status)
+        status = dataclasses.replace(
+            self._get_publish_status(serial), temperature_unit=unit
+        )
+        await self._publish_status(serial, status)
 
-    async def set_water_mode(self, on: bool) -> None:
+    async def set_water_mode(self, serial: str, on: bool) -> None:
         """Set the automatic water/nutrient mode for this device (on/off)."""
         status = dataclasses.replace(
-            self._get_publish_status(), water_mode=1 if on else 0
+            self._get_publish_status(serial), water_mode=1 if on else 0
         )
-        await self._publish_status(status)
+        await self._publish_status(serial, status)
+
+    # endregion
