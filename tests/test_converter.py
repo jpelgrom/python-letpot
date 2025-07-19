@@ -6,10 +6,10 @@ import pytest
 
 from letpot.converters import CONVERTERS, LPHx1Converter, LetPotDeviceConverter
 from letpot.exceptions import LetPotException
-from letpot.models import LetPotDeviceErrors, LetPotDeviceStatus
+from letpot.models import LetPotDeviceErrors, LetPotGardenStatus
 
 
-SUPPORTED_DEVICE_TYPES = [
+SUPPORTED_DEVICE_TYPES_GARDEN = [
     "IGS01",
     "LPH11",
     "LPH21",
@@ -22,7 +22,11 @@ SUPPORTED_DEVICE_TYPES = [
     "LPH62",
     "LPH63",
 ]
-DEVICE_STATUS = LetPotDeviceStatus(
+SUPPORTED_DEVICE_TYPES_WATERING = ["ISE05", "ISE06"]
+SUPPORTED_DEVICE_TYPES_ALL = (
+    SUPPORTED_DEVICE_TYPES_GARDEN + SUPPORTED_DEVICE_TYPES_WATERING
+)
+DEVICE_STATUS_GARDEN = LetPotGardenStatus(
     errors=LetPotDeviceErrors(low_water=True),
     light_brightness=500,
     light_mode=1,
@@ -45,7 +49,7 @@ DEVICE_STATUS = LetPotDeviceStatus(
 
 @pytest.mark.parametrize(
     "device_type",
-    SUPPORTED_DEVICE_TYPES,
+    SUPPORTED_DEVICE_TYPES_ALL,
 )
 def test_supported_finds_converter(device_type: str) -> None:
     """Test support by a converter for all supported device types."""
@@ -57,7 +61,7 @@ def test_supported_finds_converter(device_type: str) -> None:
 
 @pytest.mark.parametrize(
     "device_type",
-    SUPPORTED_DEVICE_TYPES,
+    SUPPORTED_DEVICE_TYPES_ALL,
 )
 def test_supported_has_model(device_type: str) -> None:
     """Test model information for all supported device types."""
@@ -86,7 +90,7 @@ def test_unsupported_raises_exception(converter: type[LetPotDeviceConverter]) ->
 
 @pytest.mark.parametrize(
     "device_type",
-    ["LPH21", "IGS01", "LPH60", "LPH63"],
+    ["LPH21", "IGS01", "LPH60", "LPH63", "ISE05"],
 )
 def test_unexpected_status_is_ignored(device_type: str) -> None:
     """Test that processing a weird status message returns None."""
@@ -108,4 +112,4 @@ def test_lph21_message_to_status() -> None:
     converter = LPHx1Converter("LPH21")
     message = b"4d000112620100010101010000071e110001f4000000"
     status = converter.convert_hex_to_status(message)
-    assert status == DEVICE_STATUS
+    assert status == DEVICE_STATUS_GARDEN

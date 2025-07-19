@@ -7,9 +7,11 @@ import math
 from typing import Sequence
 from aiomqtt.types import PayloadType
 
-from letpot.exceptions import LetPotException
+from letpot.exceptions import LetPotDeviceTypeException, LetPotException
 from letpot.models import (
     DeviceFeature,
+    LetPotGardenStatus,
+    LetPotWateringSystemStatus,
     TemperatureUnit,
     LetPotDeviceErrors,
     LetPotDeviceStatus,
@@ -111,6 +113,8 @@ class LPHx1Converter(LetPotDeviceConverter):
         return [97, 1]
 
     def get_update_status_message(self, status: LetPotDeviceStatus) -> list[int]:
+        if not isinstance(status, LetPotGardenStatus):
+            raise LetPotDeviceTypeException()
         return [
             97,
             2,
@@ -141,7 +145,7 @@ class LPHx1Converter(LetPotDeviceConverter):
         else:
             error_pump_malfunction = True if data[7] & 2 else False
 
-        return LetPotDeviceStatus(
+        return LetPotGardenStatus(
             raw=data,
             light_brightness=256 * data[17] + data[18],
             light_mode=data[10],
@@ -188,6 +192,8 @@ class IGSorAltConverter(LetPotDeviceConverter):
         return [11, 1]
 
     def get_update_status_message(self, status: LetPotDeviceStatus) -> list[int]:
+        if not isinstance(status, LetPotGardenStatus):
+            raise LetPotDeviceTypeException()
         return [
             11,
             2,
@@ -214,7 +220,7 @@ class IGSorAltConverter(LetPotDeviceConverter):
         else:
             error_low_water = True if data[7] & 1 else False
 
-        return LetPotDeviceStatus(
+        return LetPotGardenStatus(
             raw=data,
             light_brightness=None,
             light_mode=data[10],
@@ -260,6 +266,8 @@ class LPH6xConverter(LetPotDeviceConverter):
         return [13, 1]
 
     def get_update_status_message(self, status: LetPotDeviceStatus) -> list[int]:
+        if not isinstance(status, LetPotGardenStatus):
+            raise LetPotDeviceTypeException()
         return [
             13,
             2,
@@ -288,7 +296,7 @@ class LPH6xConverter(LetPotDeviceConverter):
             _LOGGER.debug("Invalid message received, ignoring: %s", message)
             return None
 
-        return LetPotDeviceStatus(
+        return LetPotGardenStatus(
             raw=data,
             light_brightness=256 * data[18] + data[19],
             light_mode=data[10],
@@ -340,6 +348,8 @@ class LPH63Converter(LetPotDeviceConverter):
         return [101, 1]
 
     def get_update_status_message(self, status: LetPotDeviceStatus) -> list[int]:
+        if not isinstance(status, LetPotGardenStatus):
+            raise LetPotDeviceTypeException()
         return [
             101,
             2,
@@ -365,7 +375,7 @@ class LPH63Converter(LetPotDeviceConverter):
             _LOGGER.debug("Invalid message received, ignoring: %s", message)
             return None
 
-        return LetPotDeviceStatus(
+        return LetPotGardenStatus(
             raw=data,
             light_brightness=256 * data[18] + data[19],
             light_mode=data[10],
@@ -410,6 +420,8 @@ class ISEConverter(LetPotDeviceConverter):
         return [65, 1]
 
     def get_update_status_message(self, status: LetPotDeviceStatus) -> list[int]:
+        if not isinstance(status, LetPotWateringSystemStatus):
+            raise LetPotDeviceTypeException()
         return [
             65,
             2,
@@ -439,20 +451,10 @@ class ISEConverter(LetPotDeviceConverter):
         else:
             pump_cycle_skipwater = math.floor((256 * data[35] + data[36]) / 60)
 
-        return LetPotDeviceStatus(
+        return LetPotWateringSystemStatus(
             raw=data,
-            light_brightness=None,
-            light_mode=0,
-            light_schedule_end=time(),
-            light_schedule_start=time(),
-            online=True,
-            plant_days=0,
             pump_mode=data[9],
-            pump_nutrient=None,
-            pump_status=None,
             system_on=data[7] == 1,
-            system_sound=None,
-            errors=LetPotDeviceErrors(low_water=None),
             wifi_state=data[6],
             pump_on=data[8] == 1,
             pump_duration=256 * data[10] + data[11],
