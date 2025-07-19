@@ -76,7 +76,16 @@ class LetPotDeviceErrors:
 
 @dataclass
 class LetPotDeviceStatus:
-    """Device status model."""
+    """Generic device status model."""
+
+    raw: list[int]
+    system_on: bool
+    pump_mode: int
+
+
+@dataclass
+class LetPotGardenStatus(LetPotDeviceStatus):
+    """Device status model for a hydroponic garden."""
 
     errors: LetPotDeviceErrors
     light_brightness: int | None
@@ -85,13 +94,30 @@ class LetPotDeviceStatus:
     light_schedule_start: time
     online: bool
     plant_days: int
-    pump_mode: int
     pump_nutrient: int | None
     pump_status: int | None
-    raw: list[int]
-    system_on: bool
     system_sound: bool | None
     temperature_unit: TemperatureUnit | None = None
     temperature_value: int | None = None
     water_mode: int | None = None
     water_level: int | None = None
+
+
+@dataclass
+class LetPotWateringSystemStatus(LetPotDeviceStatus):
+    """Device status model for a watering system."""
+
+    wifi_state: int
+    pump_on: bool
+    pump_duration: int
+    pump_countdown: list[int]
+    pump_cycle_on: bool
+    pump_cycle_duration: int
+    pump_cycle_workingduration: int
+    pump_cycle_mode: int
+    pump_cycle_workinginterval: int
+    pump_cycle_restinterval: int
+    pump_works_latest_reason: int
+    pump_works_latest_time: list[int]
+    pump_works_next_time: list[int]
+    pump_cycle_skip_water: int | None
