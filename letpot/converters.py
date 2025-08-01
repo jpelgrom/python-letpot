@@ -1,19 +1,20 @@
 """Python client for LetPot hydroponic gardens."""
 
-from abc import ABC, abstractmethod
-from datetime import time
 import logging
 import math
+from abc import ABC, abstractmethod
+from datetime import time
 from typing import Sequence
+
 from aiomqtt.types import PayloadType
 
 from letpot.exceptions import LetPotException
 from letpot.models import (
     DeviceFeature,
-    LightMode,
-    TemperatureUnit,
     LetPotDeviceErrors,
     LetPotDeviceStatus,
+    LightMode,
+    TemperatureUnit,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -102,7 +103,7 @@ class LPHx1Converter(LetPotDeviceConverter):
             return None
 
     def supported_features(self) -> DeviceFeature:
-        features = DeviceFeature.PUMP_STATUS
+        features = DeviceFeature.CATEGORY_HYDROPONIC_GARDEN | DeviceFeature.PUMP_STATUS
         if self._device_type in ["LPH21", "LPH31"]:
             features |= DeviceFeature.LIGHT_BRIGHTNESS_LOW_HIGH
         return features
@@ -182,7 +183,7 @@ class IGSorAltConverter(LetPotDeviceConverter):
             return None
 
     def supported_features(self) -> DeviceFeature:
-        return DeviceFeature(0)
+        return DeviceFeature.CATEGORY_HYDROPONIC_GARDEN
 
     def get_current_status_message(self) -> list[int]:
         return [11, 1]
@@ -246,7 +247,8 @@ class LPH6xConverter(LetPotDeviceConverter):
 
     def supported_features(self) -> DeviceFeature:
         features = (
-            DeviceFeature.LIGHT_BRIGHTNESS_LEVELS
+            DeviceFeature.CATEGORY_HYDROPONIC_GARDEN
+            | DeviceFeature.LIGHT_BRIGHTNESS_LEVELS
             | DeviceFeature.PUMP_AUTO
             | DeviceFeature.TEMPERATURE
             | DeviceFeature.TEMPERATURE_SET_UNIT
@@ -328,7 +330,8 @@ class LPH63Converter(LetPotDeviceConverter):
 
     def supported_features(self) -> DeviceFeature:
         return (
-            DeviceFeature.LIGHT_BRIGHTNESS_LEVELS
+            DeviceFeature.CATEGORY_HYDROPONIC_GARDEN
+            | DeviceFeature.LIGHT_BRIGHTNESS_LEVELS
             | DeviceFeature.NUTRIENT_BUTTON
             | DeviceFeature.PUMP_AUTO
             | DeviceFeature.PUMP_STATUS

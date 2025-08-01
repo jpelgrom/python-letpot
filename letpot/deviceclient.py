@@ -2,13 +2,16 @@
 
 import asyncio
 import dataclasses
-from datetime import time
-from hashlib import md5, sha256
 import logging
 import os
-import time as systime
 import ssl
-from typing import Callable
+import time as systime
+from collections.abc import Coroutine
+from datetime import time
+from functools import wraps
+from hashlib import md5, sha256
+from typing import Any, Callable, Concatenate
+
 import aiomqtt
 
 from letpot.converters import CONVERTERS, LetPotDeviceConverter
@@ -16,13 +19,15 @@ from letpot.exceptions import (
     LetPotAuthenticationException,
     LetPotConnectionException,
     LetPotException,
+    LetPotFeatureException,
 )
 from letpot.models import (
     AuthenticationInfo,
+    DeviceFeature,
     LetPotDeviceInfo,
+    LetPotDeviceStatus,
     LightMode,
     TemperatureUnit,
-    LetPotDeviceStatus,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -36,6 +41,37 @@ def _create_ssl_context() -> ssl.SSLContext:
 
 
 _SSL_CONTEXT = _create_ssl_context()
+
+
+def requires_feature[T: "LetPotDeviceClient", _R, **P](
+    *required_feature: DeviceFeature,
+) -> Callable[
+    [Callable[Concatenate[T, str, P], Coroutine[Any, Any, _R]]],
+    Callable[Concatenate[T, str, P], Coroutine[Any, Any, _R]],
+]:
+    """Decorate the function to require device type support for a specific feature (inferred from serial)."""
+
+    def decorator(
+        func: Callable[Concatenate[T, str, P], Coroutine[Any, Any, _R]],
+    ) -> Callable[Concatenate[T, str, P], Coroutine[Any, Any, _R]]:
+        @wraps(func)
+        async def wrapper(
+            self: T, serial: str, *args: P.args, **kwargs: P.kwargs
+        ) -> _R:
+            exception_message = f"Device missing required feature: {required_feature}"
+            try:
+                supported_features = self._converter(serial).supported_features()
+                if not any(
+                    feature in supported_features for feature in required_feature
+                ):
+                    raise LetPotFeatureException(exception_message)
+            except LetPotException:
+                raise LetPotFeatureException(exception_message)
+            return await func(self, serial, *args, **kwargs)
+
+        return wrapper
+
+    return decorator
 
 
 class LetPotDeviceClient:
@@ -356,10 +392,13 @@ class LetPotDeviceClient:
         await status_event.wait()
         return self._device_status_last.get(serial)
 
+    @requires_feature(
+        DeviceFeature.LIGHT_BRIGHTNESS_LOW_HIGH, DeviceFeature.LIGHT_BRIGHTNESS_LEVELS
+    )
     async def set_light_brightness(self, serial: str, level: int) -> None:
         """Set the light brightness for this device (brightness level)."""
         if level not in self.get_light_brightness_levels(serial):
-            raise LetPotException(
+            raise LetPotFeatureException(
                 f"Device doesn't support setting light brightness to {level}"
             )
 
@@ -368,11 +407,13 @@ class LetPotDeviceClient:
         )
         await self._publish_status(serial, status)
 
+    @requires_feature(DeviceFeature.CATEGORY_HYDROPONIC_GARDEN)
     async def set_light_mode(self, serial: str, mode: LightMode) -> None:
         """Set the light mode for this device (flower/vegetable)."""
         status = dataclasses.replace(self._get_publish_status(serial), light_mode=mode)
         await self._publish_status(serial, status)
 
+    @requires_feature(DeviceFeature.CATEGORY_HYDROPONIC_GARDEN)
     async def set_light_schedule(
         self, serial: str, start: time | None, end: time | None
     ) -> None:
@@ -387,6 +428,7 @@ class LetPotDeviceClient:
         )
         await self._publish_status(serial, status)
 
+    @requires_feature(DeviceFeature.CATEGORY_HYDROPONIC_GARDEN)
     async def set_plant_days(self, serial: str, days: int) -> None:
         """Set the plant days counter for this device (number of days)."""
         status = dataclasses.replace(self._get_publish_status(serial), plant_days=days)
@@ -404,11 +446,13 @@ class LetPotDeviceClient:
         )
         await self._publish_status(serial, status)
 
+    @requires_feature(DeviceFeature.CATEGORY_HYDROPONIC_GARDEN)
     async def set_sound(self, serial: str, on: bool) -> None:
         """Set the alarm sound for this device (on/off)."""
         status = dataclasses.replace(self._get_publish_status(serial), system_sound=on)
         await self._publish_status(serial, status)
 
+    @requires_feature(DeviceFeature.TEMPERATURE_SET_UNIT)
     async def set_temperature_unit(self, serial: str, unit: TemperatureUnit) -> None:
         """Set the temperature unit for this device (Celsius/Fahrenheit)."""
         status = dataclasses.replace(
@@ -416,6 +460,7 @@ class LetPotDeviceClient:
         )
         await self._publish_status(serial, status)
 
+    @requires_feature(DeviceFeature.PUMP_AUTO)
     async def set_water_mode(self, serial: str, on: bool) -> None:
         """Set the automatic water/nutrient mode for this device (on/off)."""
         status = dataclasses.replace(

@@ -1,13 +1,16 @@
 """Models for Python client for LetPot hydroponic gardens."""
 
+import time as systime
 from dataclasses import dataclass
 from datetime import time
 from enum import IntEnum, IntFlag, auto
-import time as systime
 
 
 class DeviceFeature(IntFlag):
     """Features that a LetPot device can support."""
+
+    CATEGORY_HYDROPONIC_GARDEN = auto()
+    """Features common to the hydroponic garden device category."""
 
     LIGHT_BRIGHTNESS_LOW_HIGH = auto()
     LIGHT_BRIGHTNESS_LEVELS = auto()
