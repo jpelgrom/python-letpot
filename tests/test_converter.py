@@ -2,10 +2,10 @@
 
 import pytest
 
-from letpot.converters import CONVERTERS, LPHx1Converter, LetPotDeviceConverter
+from letpot.converters import CONVERTERS, LetPotDeviceConverter, LPHx1Converter
 from letpot.exceptions import LetPotException
-from . import DEVICE_STATUS
 
+from . import DEVICE_STATUS
 
 SUPPORTED_DEVICE_TYPES = [
     "IGS01",

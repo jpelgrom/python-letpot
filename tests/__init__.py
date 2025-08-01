@@ -1,6 +1,7 @@
 """Tests for Python client for LetPot hydroponic gardens."""
 
 from datetime import time
+
 from letpot.models import (
     AuthenticationInfo,
     LetPotDeviceErrors,

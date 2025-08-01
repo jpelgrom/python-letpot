@@ -1,9 +1,9 @@
 """Models for Python client for LetPot hydroponic gardens."""
 
+import time as systime
 from dataclasses import dataclass
 from datetime import time
 from enum import IntEnum, IntFlag, auto
-import time as systime
 
 
 class DeviceFeature(IntFlag):

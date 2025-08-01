@@ -1,23 +1,19 @@
 """Tests for the device client."""
 
+import asyncio
 from collections.abc import AsyncGenerator
-from unittest.mock import MagicMock, patch
 from contextlib import nullcontext
-
-from aiomqtt import Client, Message
+from unittest.mock import MagicMock, patch
 
 import pytest
 import pytest_asyncio
-import asyncio
+from aiomqtt import Client, Message
 
-from letpot.exceptions import (
-    LetPotFeatureException,
-)
+from letpot.deviceclient import LetPotDeviceClient
+from letpot.exceptions import LetPotFeatureException
 from letpot.models import TemperatureUnit
 
 from . import AUTHENTICATION, DEVICE_STATUS
-
-from letpot.deviceclient import LetPotDeviceClient
 
 
 class MockMessagesIterator:
