@@ -1,12 +1,10 @@
 """Tests for the converters."""
 
-from datetime import time
-
 import pytest
 
 from letpot.converters import CONVERTERS, LPHx1Converter, LetPotDeviceConverter
 from letpot.exceptions import LetPotException
-from letpot.models import LetPotDeviceErrors, LetPotDeviceStatus, LightMode
+from . import DEVICE_STATUS
 
 
 SUPPORTED_DEVICE_TYPES = [
@@ -22,25 +20,6 @@ SUPPORTED_DEVICE_TYPES = [
     "LPH62",
     "LPH63",
 ]
-DEVICE_STATUS = LetPotDeviceStatus(
-    errors=LetPotDeviceErrors(low_water=True),
-    light_brightness=500,
-    light_mode=LightMode.VEGETABLE,
-    light_schedule_end=time(17, 0),
-    light_schedule_start=time(7, 30),
-    online=True,
-    plant_days=0,
-    pump_mode=1,
-    pump_nutrient=None,
-    pump_status=0,
-    raw=[77, 0, 1, 18, 98, 1, 0, 1, 1, 1, 1, 0, 0, 7, 30, 17, 0, 1, 244, 0, 0, 0],
-    system_on=True,
-    system_sound=False,
-    temperature_unit=None,
-    temperature_value=None,
-    water_mode=None,
-    water_level=None,
-)
 
 
 @pytest.mark.parametrize(

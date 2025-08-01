@@ -2,13 +2,20 @@
 
 from collections.abc import AsyncGenerator
 from unittest.mock import MagicMock, patch
+from contextlib import nullcontext
 
 from aiomqtt import Client, Message
 
+import pytest
 import pytest_asyncio
 import asyncio
 
-from . import AUTHENTICATION
+from letpot.exceptions import (
+    LetPotFeatureException,
+)
+from letpot.models import TemperatureUnit
+
+from . import AUTHENTICATION, DEVICE_STATUS
 
 from letpot.deviceclient import LetPotDeviceClient
 
@@ -31,6 +38,12 @@ class MockMessagesIterator:
         return item
 
 
+@pytest.fixture
+async def device_client() -> LetPotDeviceClient:
+    """Fixture for device client."""
+    return LetPotDeviceClient(AUTHENTICATION)
+
+
 @pytest_asyncio.fixture()
 async def mock_aiomqtt() -> AsyncGenerator[MagicMock]:
     """Mock a aiomqtt.Client."""
@@ -44,13 +57,14 @@ async def mock_aiomqtt() -> AsyncGenerator[MagicMock]:
         yield mock_client_class
 
 
-async def test_subscribe_setup_shutdown(mock_aiomqtt: MagicMock) -> None:
+async def test_subscribe_setup_shutdown(
+    device_client: LetPotDeviceClient, mock_aiomqtt: MagicMock
+) -> None:
     """Test subscribing/unsubscribing creates a client and shuts it down."""
-    device_client = LetPotDeviceClient(AUTHENTICATION)
-    topic = "LPH21ABCD/status"
+    device = "LPH21ABCD"
 
     # Test subscribing sets up a client + subscription
-    await device_client.subscribe(topic, lambda _: None)
+    await device_client.subscribe(device, lambda _: None)
     assert device_client._client is not None
     assert (
         device_client._connected is not None
@@ -58,14 +72,15 @@ async def test_subscribe_setup_shutdown(mock_aiomqtt: MagicMock) -> None:
     )
 
     # Test unsubscribing cancels the subscription + shuts down client
-    await device_client.unsubscribe(topic)
+    await device_client.unsubscribe(device)
     assert device_client._client is None
     assert device_client._client_task.cancelled()
 
 
-async def test_subscribe_multiple(mock_aiomqtt: MagicMock) -> None:
+async def test_subscribe_multiple(
+    device_client: LetPotDeviceClient, mock_aiomqtt: MagicMock
+) -> None:
     """Test multiple subscriptions use one client and shuts down only when all are done."""
-    device_client = LetPotDeviceClient(AUTHENTICATION)
     device1 = "LPH21ABCD"
     device2 = "LPH21DEFG"
 
@@ -85,9 +100,10 @@ async def test_subscribe_multiple(mock_aiomqtt: MagicMock) -> None:
     assert device_client._client_task.cancelled()
 
 
-async def test_subscribe_callback(mock_aiomqtt: MagicMock) -> None:
+async def test_subscribe_callback(
+    device_client: LetPotDeviceClient, mock_aiomqtt: MagicMock
+) -> None:
     """Test subscription receiving a status update passing it to the callback."""
-    device_client = LetPotDeviceClient(AUTHENTICATION)
     device1 = "LPH21ABCD"
     device2 = "LPH21DEFG"
     callback1 = MagicMock()
@@ -128,3 +144,58 @@ async def test_subscribe_callback(mock_aiomqtt: MagicMock) -> None:
     # Shutdown gracefully
     await device_client.unsubscribe(device1)
     await device_client.unsubscribe(device2)
+
+
+@pytest.mark.parametrize(
+    ("serial", "expected_result"),
+    [
+        (
+            "LPH21GHIJ",
+            pytest.raises(LetPotFeatureException, match="missing required feature"),
+        ),
+        ("LPH62GHIJ", nullcontext()),
+    ],
+)
+async def test_requires_feature_one(
+    device_client: LetPotDeviceClient,
+    mock_aiomqtt: MagicMock,
+    serial: str,
+    expected_result,
+) -> None:
+    """Test the requires_feature annotation requiring one feature."""
+    # Prepare device client and mock status for use in call
+    await device_client.subscribe(serial, lambda _: None)
+    device_client._device_status_last[serial] = DEVICE_STATUS
+
+    with expected_result:
+        await device_client.set_temperature_unit(serial, TemperatureUnit.CELSIUS)
+
+    await device_client.unsubscribe(serial)
+
+
+@pytest.mark.parametrize(
+    ("serial", "expected_result"),
+    [
+        (
+            "IGS01JKLM",
+            pytest.raises(LetPotFeatureException, match="missing required feature"),
+        ),
+        ("LPH21JKLM", nullcontext()),
+        ("LPH62JKLM", nullcontext()),
+    ],
+)
+async def test_requires_feature_or(
+    device_client: LetPotDeviceClient,
+    mock_aiomqtt: MagicMock,
+    serial: str,
+    expected_result,
+) -> None:
+    """Test the requires_feature annotation requiring any of n features."""
+    # Prepare device client and mock status for use in call
+    await device_client.subscribe(serial, lambda _: None)
+    device_client._device_status_last[serial] = DEVICE_STATUS
+
+    with expected_result:
+        await device_client.set_light_brightness(serial, 500)
+
+    await device_client.unsubscribe(serial)
