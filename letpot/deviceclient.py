@@ -212,6 +212,9 @@ class LetPotDeviceClient:
                     tls_insecure=False,
                     websocket_path="/mqttwss",
                 ) as client:
+                    if connection_attempts >= 1:
+                        _LOGGER.info("Reconnected to MQTT broker")
+
                     self._client = client
                     self._message_id = 0
                     connection_attempts = 0
@@ -239,14 +242,16 @@ class LetPotDeviceClient:
                         raise auth_exception from err
 
                 connection_attempts += 1
-                reconnect_interval = min(connection_attempts * 15, 600)
-                _LOGGER.error(
-                    "MQTT error, reconnecting in %i seconds: %s",
-                    reconnect_interval,
-                    err,
-                )
-
-                await asyncio.sleep(reconnect_interval)
+                if connection_attempts == 1:
+                    _LOGGER.info("MQTT connection error, reconnecting...: %s", err)
+                else:
+                    reconnect_interval = min((connection_attempts - 1) * 15, 600)
+                    _LOGGER.debug(
+                        "MQTT connection error, retrying in %i seconds: %s",
+                        reconnect_interval,
+                        err,
+                    )
+                    await asyncio.sleep(reconnect_interval)
             finally:
                 self._client = None
                 if self._connected is not None:
