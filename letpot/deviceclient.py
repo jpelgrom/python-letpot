@@ -20,6 +20,7 @@ from letpot.exceptions import (
 from letpot.models import (
     AuthenticationInfo,
     LetPotDeviceInfo,
+    LightMode,
     TemperatureUnit,
     LetPotDeviceStatus,
 )
@@ -362,7 +363,7 @@ class LetPotDeviceClient:
         )
         await self._publish_status(serial, status)
 
-    async def set_light_mode(self, serial: str, mode: int) -> None:
+    async def set_light_mode(self, serial: str, mode: LightMode) -> None:
         """Set the light mode for this device (flower/vegetable)."""
         status = dataclasses.replace(self._get_publish_status(serial), light_mode=mode)
         await self._publish_status(serial, status)
