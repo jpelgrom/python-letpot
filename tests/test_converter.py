@@ -6,7 +6,7 @@ import pytest
 
 from letpot.converters import CONVERTERS, LPHx1Converter, LetPotDeviceConverter
 from letpot.exceptions import LetPotException
-from letpot.models import LetPotDeviceErrors, LetPotDeviceStatus
+from letpot.models import LetPotDeviceErrors, LetPotDeviceStatus, LightMode
 
 
 SUPPORTED_DEVICE_TYPES = [
@@ -25,7 +25,7 @@ SUPPORTED_DEVICE_TYPES = [
 DEVICE_STATUS = LetPotDeviceStatus(
     errors=LetPotDeviceErrors(low_water=True),
     light_brightness=500,
-    light_mode=1,
+    light_mode=LightMode.VEGETABLE,
     light_schedule_end=time(17, 0),
     light_schedule_start=time(7, 30),
     online=True,

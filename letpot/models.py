@@ -19,6 +19,15 @@ class DeviceFeature(IntFlag):
     WATER_LEVEL = auto()
 
 
+class LightMode(IntEnum):
+    """Device light mode."""
+
+    FLOWER = 0
+    """Fruits/flowers light mode (red/white LEDs)."""
+    VEGETABLE = 1
+    """Vegetables/herbs light mode (red/blue/white LEDs)."""
+
+
 class TemperatureUnit(IntEnum):
     """Device temperate sensor/display unit."""
 
@@ -80,7 +89,7 @@ class LetPotDeviceStatus:
 
     errors: LetPotDeviceErrors
     light_brightness: int | None
-    light_mode: int
+    light_mode: LightMode
     light_schedule_end: time
     light_schedule_start: time
     online: bool
