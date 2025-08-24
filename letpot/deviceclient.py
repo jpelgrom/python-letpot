@@ -51,7 +51,7 @@ def requires_feature(
         @wraps(func)
         async def wrapper(*args: P.args, **kwargs: P.kwargs) -> _R:
             self = cast(LetPotDeviceClient, args[0])
-            serial = cast(str, args[1])
+            serial = cast(str, args[1] if len(args) >= 2 else kwargs["serial"])
             exception_message = f"Device missing required feature: {required_feature}"
             try:
                 supported_features = self._converter(serial).supported_features()
