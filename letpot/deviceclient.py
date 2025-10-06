@@ -18,7 +18,7 @@ from letpot.converters import CONVERTERS, LetPotDeviceConverter
 from letpot.exceptions import (
     LetPotAuthenticationException,
     LetPotConnectionException,
-    LetPotDeviceTypeException,
+    LetPotDeviceCategoryException,
     LetPotException,
     LetPotFeatureException,
 )
@@ -410,7 +410,7 @@ class LetPotDeviceClient:
 
         use_status = self._get_publish_status(serial)
         if not isinstance(use_status, LetPotGardenStatus):
-            raise LetPotDeviceTypeException()
+            raise LetPotDeviceCategoryException()
         status = dataclasses.replace(use_status, light_brightness=level)
         await self._publish_status(serial, status)
 
@@ -419,7 +419,7 @@ class LetPotDeviceClient:
         """Set the light mode for this device (flower/vegetable)."""
         use_status = self._get_publish_status(serial)
         if not isinstance(use_status, LetPotGardenStatus):
-            raise LetPotDeviceTypeException()
+            raise LetPotDeviceCategoryException()
         status = dataclasses.replace(use_status, light_mode=mode)
         await self._publish_status(serial, status)
 
@@ -430,7 +430,7 @@ class LetPotDeviceClient:
         """Set the light schedule for this device (start time and/or end time)."""
         use_status = self._get_publish_status(serial)
         if not isinstance(use_status, LetPotGardenStatus):
-            raise LetPotDeviceTypeException()
+            raise LetPotDeviceCategoryException()
         start_time = use_status.light_schedule_start if start is None else start
         end_time = use_status.light_schedule_end if end is None else end
         status = dataclasses.replace(
@@ -445,7 +445,7 @@ class LetPotDeviceClient:
         """Set the plant days counter for this device (number of days)."""
         use_status = self._get_publish_status(serial)
         if not isinstance(use_status, LetPotGardenStatus):
-            raise LetPotDeviceTypeException()
+            raise LetPotDeviceCategoryException()
         status = dataclasses.replace(use_status, plant_days=days)
         await self._publish_status(serial, status)
 
@@ -454,7 +454,7 @@ class LetPotDeviceClient:
         """Set the general power for this device (on/off)."""
         use_status = self._get_publish_status(serial)
         if not isinstance(use_status, LetPotGardenStatus):
-            raise LetPotDeviceTypeException()
+            raise LetPotDeviceCategoryException()
         status = dataclasses.replace(use_status, system_on=on)
         await self._publish_status(serial, status)
 
@@ -470,7 +470,7 @@ class LetPotDeviceClient:
         """Set the alarm sound for this device (on/off)."""
         use_status = self._get_publish_status(serial)
         if not isinstance(use_status, LetPotGardenStatus):
-            raise LetPotDeviceTypeException()
+            raise LetPotDeviceCategoryException()
         status = dataclasses.replace(use_status, system_sound=on)
         await self._publish_status(serial, status)
 
@@ -479,7 +479,7 @@ class LetPotDeviceClient:
         """Set the temperature unit for this device (Celsius/Fahrenheit)."""
         use_status = self._get_publish_status(serial)
         if not isinstance(use_status, LetPotGardenStatus):
-            raise LetPotDeviceTypeException()
+            raise LetPotDeviceCategoryException()
         status = dataclasses.replace(use_status, temperature_unit=unit)
         await self._publish_status(serial, status)
 
@@ -488,7 +488,7 @@ class LetPotDeviceClient:
         """Set the automatic water/nutrient mode for this device (on/off)."""
         use_status = self._get_publish_status(serial)
         if not isinstance(use_status, LetPotGardenStatus):
-            raise LetPotDeviceTypeException()
+            raise LetPotDeviceCategoryException()
         status = dataclasses.replace(use_status, water_mode=1 if on else 0)
         await self._publish_status(serial, status)
 

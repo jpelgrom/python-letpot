@@ -8,7 +8,7 @@ from typing import Sequence
 
 from aiomqtt.types import PayloadType
 
-from letpot.exceptions import LetPotDeviceTypeException, LetPotException
+from letpot.exceptions import LetPotDeviceCategoryException, LetPotException
 from letpot.models import (
     CycleWateringMode,
     DeviceFeature,
@@ -117,7 +117,7 @@ class LPHx1Converter(LetPotDeviceConverter):
 
     def get_update_status_message(self, status: LetPotDeviceStatus) -> list[int]:
         if not isinstance(status, LetPotGardenStatus):
-            raise LetPotDeviceTypeException()
+            raise LetPotDeviceCategoryException()
         return [
             97,
             2,
@@ -200,7 +200,7 @@ class IGSorAltConverter(LetPotDeviceConverter):
 
     def get_update_status_message(self, status: LetPotDeviceStatus) -> list[int]:
         if not isinstance(status, LetPotGardenStatus):
-            raise LetPotDeviceTypeException()
+            raise LetPotDeviceCategoryException()
         return [
             11,
             2,
@@ -275,7 +275,7 @@ class LPHMaxLowerConverter(LetPotDeviceConverter):
 
     def get_update_status_message(self, status: LetPotDeviceStatus) -> list[int]:
         if not isinstance(status, LetPotGardenStatus):
-            raise LetPotDeviceTypeException()
+            raise LetPotDeviceCategoryException()
         return [
             13,
             2,
@@ -358,7 +358,7 @@ class LPHMaxHigherConverter(LetPotDeviceConverter):
 
     def get_update_status_message(self, status: LetPotDeviceStatus) -> list[int]:
         if not isinstance(status, LetPotGardenStatus):
-            raise LetPotDeviceTypeException()
+            raise LetPotDeviceCategoryException()
         return [
             101,
             2,
@@ -430,7 +430,7 @@ class ISEConverter(LetPotDeviceConverter):
 
     def get_update_status_message(self, status: LetPotDeviceStatus) -> list[int]:
         if not isinstance(status, LetPotWateringSystemStatus):
-            raise LetPotDeviceTypeException()
+            raise LetPotDeviceCategoryException()
         return [
             65,
             2,
