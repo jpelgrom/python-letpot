@@ -12,6 +12,9 @@ class DeviceFeature(IntFlag):
     CATEGORY_HYDROPONIC_GARDEN = auto()
     """Features common to the hydroponic garden device category."""
 
+    CATEGORY_WATERING_SYSTEM = auto()
+    """Features common to the watering system device category."""
+
     LIGHT_BRIGHTNESS_LOW_HIGH = auto()
     LIGHT_BRIGHTNESS_LEVELS = auto()
     NUTRIENT_BUTTON = auto()

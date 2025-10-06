@@ -4,9 +4,8 @@ import pytest
 
 from letpot.converters import CONVERTERS, LetPotDeviceConverter, LPHx1Converter
 from letpot.exceptions import LetPotException
-from letpot.models import LetPotDeviceErrors, LetPotGardenStatus
 
-from . import DEVICE_STATUS
+from . import DEVICE_STATUS_GARDEN
 
 SUPPORTED_DEVICE_TYPES_GARDEN = [
     "IGS01",
@@ -24,25 +23,6 @@ SUPPORTED_DEVICE_TYPES_GARDEN = [
 SUPPORTED_DEVICE_TYPES_WATERING = ["ISE05", "ISE06"]
 SUPPORTED_DEVICE_TYPES_ALL = (
     SUPPORTED_DEVICE_TYPES_GARDEN + SUPPORTED_DEVICE_TYPES_WATERING
-)
-DEVICE_STATUS_GARDEN = LetPotGardenStatus(
-    errors=LetPotDeviceErrors(low_water=True),
-    light_brightness=500,
-    light_mode=1,
-    light_schedule_end=time(17, 0),
-    light_schedule_start=time(7, 30),
-    online=True,
-    plant_days=0,
-    pump_mode=1,
-    pump_nutrient=None,
-    pump_status=0,
-    raw=[77, 0, 1, 18, 98, 1, 0, 1, 1, 1, 1, 0, 0, 7, 30, 17, 0, 1, 244, 0, 0, 0],
-    system_on=True,
-    system_sound=False,
-    temperature_unit=None,
-    temperature_value=None,
-    water_mode=None,
-    water_level=None,
 )
 
 
