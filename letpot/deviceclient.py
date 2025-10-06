@@ -26,9 +26,8 @@ from letpot.models import (
     AuthenticationInfo,
     DeviceFeature,
     LetPotDeviceInfo,
-    LetPotGardenStatus,
-    TemperatureUnit,
     LetPotDeviceStatus,
+    LetPotGardenStatus,
     LightMode,
     TemperatureUnit,
 )

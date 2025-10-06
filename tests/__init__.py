@@ -5,7 +5,7 @@ from datetime import time
 from letpot.models import (
     AuthenticationInfo,
     LetPotDeviceErrors,
-    LetPotDeviceStatus,
+    LetPotGardenStatus,
     LightMode,
 )
 
@@ -19,7 +19,7 @@ AUTHENTICATION = AuthenticationInfo(
 )
 
 
-DEVICE_STATUS = LetPotDeviceStatus(
+DEVICE_STATUS_GARDEN = LetPotGardenStatus(
     errors=LetPotDeviceErrors(low_water=True),
     light_brightness=500,
     light_mode=LightMode.VEGETABLE,

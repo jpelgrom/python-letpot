@@ -13,7 +13,7 @@ from letpot.deviceclient import LetPotDeviceClient
 from letpot.exceptions import LetPotFeatureException
 from letpot.models import TemperatureUnit
 
-from . import AUTHENTICATION, DEVICE_STATUS
+from . import AUTHENTICATION, DEVICE_STATUS_GARDEN
 
 
 class MockMessagesIterator:
@@ -161,7 +161,7 @@ async def test_requires_feature_one(
     """Test the requires_feature annotation requiring one feature."""
     # Prepare device client and mock status for use in call
     await device_client.subscribe(serial, lambda _: None)
-    device_client._device_status_last[serial] = DEVICE_STATUS
+    device_client._device_status_last[serial] = DEVICE_STATUS_GARDEN
 
     with expected_result:
         await device_client.set_temperature_unit(serial, TemperatureUnit.CELSIUS)
@@ -189,7 +189,7 @@ async def test_requires_feature_or(
     """Test the requires_feature annotation requiring any of n features."""
     # Prepare device client and mock status for use in call
     await device_client.subscribe(serial, lambda _: None)
-    device_client._device_status_last[serial] = DEVICE_STATUS
+    device_client._device_status_last[serial] = DEVICE_STATUS_GARDEN
 
     with expected_result:
         await device_client.set_light_brightness(serial, 500)
