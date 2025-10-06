@@ -449,9 +449,13 @@ class LetPotDeviceClient:
         status = dataclasses.replace(use_status, plant_days=days)
         await self._publish_status(serial, status)
 
+    @requires_feature(DeviceFeature.CATEGORY_HYDROPONIC_GARDEN)
     async def set_power(self, serial: str, on: bool) -> None:
         """Set the general power for this device (on/off)."""
-        status = dataclasses.replace(self._get_publish_status(serial), system_on=on)
+        use_status = self._get_publish_status(serial)
+        if not isinstance(use_status, LetPotGardenStatus):
+            raise LetPotDeviceTypeException()
+        status = dataclasses.replace(use_status, system_on=on)
         await self._publish_status(serial, status)
 
     async def set_pump_mode(self, serial: str, on: bool) -> None:

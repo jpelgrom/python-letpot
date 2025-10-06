@@ -10,6 +10,7 @@ from aiomqtt.types import PayloadType
 
 from letpot.exceptions import LetPotDeviceTypeException, LetPotException
 from letpot.models import (
+    CycleWateringMode,
     DeviceFeature,
     LetPotDeviceErrors,
     LetPotDeviceStatus,
@@ -422,7 +423,7 @@ class ISEConverter(LetPotDeviceConverter):
         return MODEL_DI
 
     def supported_features(self) -> DeviceFeature:
-        return DeviceFeature(0)
+        return DeviceFeature.CATEGORY_WATERING_SYSTEM
 
     def get_current_status_message(self) -> list[int]:
         return [65, 1]
@@ -435,12 +436,12 @@ class ISEConverter(LetPotDeviceConverter):
             2,
             1 if status.pump_mode > 0 else 0,
             1 if status.pump_cycle_on is True else 0,
-            math.floor((status.pump_duration or 0) / 256),
-            (status.pump_duration or 0) % 256,
+            math.floor((status.pump_manual_duration or 0) / 256),
+            (status.pump_manual_duration or 0) % 256,
+            math.floor((status.pump_cycle_frequency or 0) / 256),
+            (status.pump_cycle_frequency or 0) % 256,
             math.floor((status.pump_cycle_duration or 0) / 256),
             (status.pump_cycle_duration or 0) % 256,
-            math.floor((status.pump_cycle_workingduration or 0) / 256),
-            (status.pump_cycle_workingduration or 0) % 256,
             status.pump_cycle_mode or 0,
             math.floor((status.pump_cycle_workinginterval or 0) / 256),
             (status.pump_cycle_workinginterval or 0) % 256,
@@ -462,15 +463,17 @@ class ISEConverter(LetPotDeviceConverter):
         return LetPotWateringSystemStatus(
             raw=data,
             pump_mode=data[9],
-            system_on=data[7] == 1,
+            errors=LetPotDeviceErrors(
+                low_water=True if data[7] & 1 else False,
+            ),
             wifi_state=data[6],
             pump_on=data[8] == 1,
-            pump_duration=256 * data[10] + data[11],
+            pump_manual_duration=256 * data[10] + data[11],
             pump_countdown=data[12:16],
             pump_cycle_on=data[16] == 1,
-            pump_cycle_duration=256 * data[17] + data[18],
-            pump_cycle_workingduration=256 * data[19] + data[20],
-            pump_cycle_mode=data[21],
+            pump_cycle_frequency=256 * data[17] + data[18],
+            pump_cycle_duration=256 * data[19] + data[20],
+            pump_cycle_mode=CycleWateringMode(data[10]),
             pump_cycle_workinginterval=256 * data[22] + data[23],
             pump_cycle_restinterval=256 * data[24] + data[25],
             pump_works_latest_reason=data[26],

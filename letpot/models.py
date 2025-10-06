@@ -25,6 +25,13 @@ class DeviceFeature(IntFlag):
     WATER_LEVEL = auto()
 
 
+class CycleWateringMode(IntEnum):
+    """Device cycle watering mode."""
+
+    CONTINUOUS = 0
+    INTERMITTENT = 1
+
+
 class LightMode(IntEnum):
     """Device light mode."""
 
@@ -94,15 +101,15 @@ class LetPotDeviceStatus:
     """Generic device status model."""
 
     raw: list[int]
-    system_on: bool
     pump_mode: int
+    errors: LetPotDeviceErrors
 
 
 @dataclass
 class LetPotGardenStatus(LetPotDeviceStatus):
     """Device status model for a hydroponic garden."""
 
-    errors: LetPotDeviceErrors
+    system_on: bool
     light_brightness: int | None
     light_mode: LightMode
     light_schedule_end: time
@@ -124,15 +131,25 @@ class LetPotWateringSystemStatus(LetPotDeviceStatus):
 
     wifi_state: int
     pump_on: bool
-    pump_duration: int
     pump_countdown: list[int]
+    pump_manual_duration: int
+    """Manual watering run duration, in minutes"""
+
     pump_cycle_on: bool
+    pump_cycle_frequency: int
+    """Cycle watering run frequency, in hours"""
+
     pump_cycle_duration: int
-    pump_cycle_workingduration: int
-    pump_cycle_mode: int
+    """Cycle watering run duration, in minutes"""
+
+    pump_cycle_mode: CycleWateringMode
     pump_cycle_workinginterval: int
+    """Intermittent cycle watering mode work interval, in seconds"""
+
     pump_cycle_restinterval: int
+    """Intermittent cycle watering mode rest interval, in seconds"""
+
+    pump_cycle_skip_water: int | None
     pump_works_latest_reason: int
     pump_works_latest_time: list[int]
     pump_works_next_time: list[int]
-    pump_cycle_skip_water: int | None
