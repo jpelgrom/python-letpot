@@ -9,14 +9,14 @@ on:
   workflow_dispatch:
 
 env:
-  DEFAULT_PYTHON: "3.13"
+  DEFAULT_PYTHON: "3.14"
 
 jobs:
   pytest:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python: ["3.12", "3.13"]
+        python: ["3.12", "3.13", "3.14"]
     steps:
       - name: Check out code
         uses: actions/checkout@v4
