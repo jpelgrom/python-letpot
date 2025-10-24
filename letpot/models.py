@@ -95,6 +95,7 @@ class LetPotDeviceStatus:
     light_mode: LightMode
     light_schedule_end: time
     light_schedule_start: time
+    light_state: int | None
     online: bool
     plant_days: int
     pump_mode: int

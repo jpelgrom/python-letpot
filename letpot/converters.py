@@ -20,6 +20,7 @@ from letpot.models import (
 _LOGGER = logging.getLogger(__name__)
 
 MODEL_AIR = ("LetPot Air", "LPH-AIR")
+MODEL_LITE = ("LetPot Lite", "LPH-LITE")
 MODEL_MAX = ("LetPot Max", "LPH-MAX")
 MODEL_MINI = ("LetPot Mini", "LPH-MINI")
 MODEL_PRO = ("LetPot Pro", "LPH-PRO")
@@ -86,11 +87,11 @@ class LetPotDeviceConverter(ABC):
 
 
 class LPHx1Converter(LetPotDeviceConverter):
-    """Converters and info for device type LPH11 (Mini), LPH21, LPH22 (Air), LPH31, LPH32 (SE)."""
+    """Converters and info for device type LPH11 (Mini), LPH21, LPH22 (Air), LPH31, LPH32 (SE), LPH42 (Lite)."""
 
     @staticmethod
     def supports_type(device_type: str) -> bool:
-        return device_type in ["LPH11", "LPH21", "LPH22", "LPH31", "LPH32"]
+        return device_type in ["LPH11", "LPH21", "LPH22", "LPH31", "LPH32", "LPH42"]
 
     def get_device_model(self) -> tuple[str, str] | None:
         if self._device_type == "LPH11":
@@ -99,12 +100,14 @@ class LPHx1Converter(LetPotDeviceConverter):
             return MODEL_AIR
         elif self._device_type in ["LPH31", "LPH32"]:
             return MODEL_SE
+        elif self._device_type == "LPH42":
+            return MODEL_LITE
         else:
             return None
 
     def supported_features(self) -> DeviceFeature:
         features = DeviceFeature.CATEGORY_HYDROPONIC_GARDEN | DeviceFeature.PUMP_STATUS
-        if self._device_type in ["LPH21", "LPH22", "LPH31", "LPH32"]:
+        if self._device_type in ["LPH21", "LPH22", "LPH31", "LPH32", "LPH42"]:
             features |= DeviceFeature.LIGHT_BRIGHTNESS_LOW_HIGH
         return features
 
@@ -137,10 +140,17 @@ class LPHx1Converter(LetPotDeviceConverter):
             _LOGGER.debug("Invalid message received, ignoring: %s", message)
             return None
 
+        # TODO confirm lite errors
         if self._device_type in ["LPH21", "LPH22"]:
             error_pump_malfunction = None
         else:
             error_pump_malfunction = True if data[7] & 2 else False
+
+        # TODO what does it mean? not yet used in app-service
+        if self._device_type == "LPH42":
+            status_light_state = data[21]
+        else:
+            status_light_state = None
 
         return LetPotDeviceStatus(
             raw=data,
@@ -148,6 +158,7 @@ class LPHx1Converter(LetPotDeviceConverter):
             light_mode=LightMode(data[10]),
             light_schedule_end=time(hour=data[15], minute=data[16]),
             light_schedule_start=time(hour=data[13], minute=data[14]),
+            light_state=status_light_state,
             online=data[6] == 0,
             plant_days=256 * data[11] + data[12],
             pump_mode=data[9],
@@ -164,7 +175,7 @@ class LPHx1Converter(LetPotDeviceConverter):
     def get_light_brightness_levels(self) -> list[int]:
         return (
             [500, 1000]
-            if self._device_type in ["LPH21", "LPH22", "LPH31", "LPH32"]
+            if self._device_type in ["LPH21", "LPH22", "LPH31", "LPH32", "LPH42"]
             else []
         )
 

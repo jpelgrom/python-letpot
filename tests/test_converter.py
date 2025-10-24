@@ -17,6 +17,7 @@ SUPPORTED_DEVICE_TYPES = [
     "LPH32",
     "LPH37",
     "LPH39",
+    "LPH42",
     "LPH60",
     "LPH61",
     "LPH62",

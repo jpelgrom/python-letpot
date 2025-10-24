@@ -25,6 +25,7 @@ DEVICE_STATUS = LetPotDeviceStatus(
     light_mode=LightMode.VEGETABLE,
     light_schedule_end=time(17, 0),
     light_schedule_start=time(7, 30),
+    light_state=None,
     online=True,
     plant_days=0,
     pump_mode=1,
