@@ -235,7 +235,7 @@ class IGSorAltConverter(LetPotDeviceConverter):
         return []
 
 
-class LPH6xConverter(LetPotDeviceConverter):
+class LPHMaxLowerConverter(LetPotDeviceConverter):
     """Converters and info for device type LPH60, LPH61, LPH62 (Max)."""
 
     @staticmethod
@@ -318,12 +318,12 @@ class LPH6xConverter(LetPotDeviceConverter):
         return [0, 125, 250, 375, 500, 625, 750, 875, 1000]
 
 
-class LPH63Converter(LetPotDeviceConverter):
-    """Converters and info for device type LPH63 (Max)."""
+class LPHMaxHigherConverter(LetPotDeviceConverter):
+    """Converters and info for device type LPH63, LPH64 (Max)."""
 
     @staticmethod
     def supports_type(device_type: str) -> bool:
-        return device_type in ["LPH63"]
+        return device_type in ["LPH63", "LPH64"]
 
     def get_device_model(self) -> tuple[str, str] | None:
         return MODEL_MAX
@@ -399,6 +399,6 @@ class LPH63Converter(LetPotDeviceConverter):
 CONVERTERS: Sequence[type[LetPotDeviceConverter]] = [
     LPHx1Converter,
     IGSorAltConverter,
-    LPH6xConverter,
-    LPH63Converter,
+    LPHMaxLowerConverter,
+    LPHMaxHigherConverter,
 ]
