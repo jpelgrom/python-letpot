@@ -19,6 +19,7 @@ SUPPORTED_DEVICE_TYPES = [
     "LPH61",
     "LPH62",
     "LPH63",
+    "LPH64",
 ]
 
 
