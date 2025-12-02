@@ -147,7 +147,7 @@ class LPHx1Converter(LetPotDeviceConverter):
             error_pump_malfunction = True if data[7] & 2 else False
 
         # TODO what does it mean? not yet used in app-service
-        if self._device_type == "LPH42":
+        if self._device_type in ["LPH22", "LPH32", "LPH42"]:
             status_light_state = data[21]
         else:
             status_light_state = None
