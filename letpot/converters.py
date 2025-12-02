@@ -86,25 +86,25 @@ class LetPotDeviceConverter(ABC):
 
 
 class LPHx1Converter(LetPotDeviceConverter):
-    """Converters and info for device type LPH11 (Mini), LPH21 (Air), LPH31 (SE)."""
+    """Converters and info for device type LPH11 (Mini), LPH21, LPH22 (Air), LPH31, LPH32 (SE)."""
 
     @staticmethod
     def supports_type(device_type: str) -> bool:
-        return device_type in ["LPH11", "LPH21", "LPH31"]
+        return device_type in ["LPH11", "LPH21", "LPH22", "LPH31", "LPH32"]
 
     def get_device_model(self) -> tuple[str, str] | None:
         if self._device_type == "LPH11":
             return MODEL_MINI
-        elif self._device_type == "LPH21":
+        elif self._device_type in ["LPH21", "LPH22"]:
             return MODEL_AIR
-        elif self._device_type == "LPH31":
+        elif self._device_type in ["LPH31", "LPH32"]:
             return MODEL_SE
         else:
             return None
 
     def supported_features(self) -> DeviceFeature:
         features = DeviceFeature.CATEGORY_HYDROPONIC_GARDEN | DeviceFeature.PUMP_STATUS
-        if self._device_type in ["LPH21", "LPH31"]:
+        if self._device_type in ["LPH21", "LPH22", "LPH31", "LPH32"]:
             features |= DeviceFeature.LIGHT_BRIGHTNESS_LOW_HIGH
         return features
 
@@ -137,7 +137,7 @@ class LPHx1Converter(LetPotDeviceConverter):
             _LOGGER.debug("Invalid message received, ignoring: %s", message)
             return None
 
-        if self._device_type == "LPH21":
+        if self._device_type in ["LPH21", "LPH22"]:
             error_pump_malfunction = None
         else:
             error_pump_malfunction = True if data[7] & 2 else False
@@ -162,7 +162,11 @@ class LPHx1Converter(LetPotDeviceConverter):
         )
 
     def get_light_brightness_levels(self) -> list[int]:
-        return [500, 1000] if self._device_type in ["LPH21", "LPH31"] else []
+        return (
+            [500, 1000]
+            if self._device_type in ["LPH21", "LPH22", "LPH31", "LPH32"]
+            else []
+        )
 
 
 class IGSorAltConverter(LetPotDeviceConverter):
