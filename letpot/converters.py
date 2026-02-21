@@ -469,7 +469,7 @@ class ISEConverter(LetPotDeviceConverter):
             pump_cycle_on=data[16] == 1,
             pump_cycle_frequency=256 * data[17] + data[18],
             pump_cycle_duration=256 * data[19] + data[20],
-            pump_cycle_mode=CycleWateringMode(data[10]),
+            pump_cycle_mode=CycleWateringMode(data[21]),
             pump_cycle_workinginterval=256 * data[22] + data[23],
             pump_cycle_restinterval=256 * data[24] + data[25],
             pump_works_latest_reason=data[26],
