@@ -2,7 +2,7 @@
 
 import time as systime
 from dataclasses import dataclass
-from datetime import time
+from datetime import datetime, time
 from enum import IntEnum, IntFlag, auto
 
 
@@ -46,6 +46,16 @@ class TemperatureUnit(IntEnum):
 
     FAHRENHEIT = 0
     CELSIUS = 1
+
+
+class WateringReason(IntEnum):
+    """Reason for latest watering run (observed values, may not be accurate)."""
+
+    NO_RUN = 0
+    INTERRUPTED = 1
+    MANUAL = 2
+    CYCLE = 3
+    SCHEDULED = 4
 
 
 @dataclass
@@ -131,7 +141,7 @@ class LetPotWateringSystemStatus(LetPotDeviceStatus):
 
     wifi_state: int
     pump_on: bool
-    pump_countdown: list[int]
+
     pump_manual_duration: int
     """Manual watering run duration, in minutes"""
 
@@ -150,6 +160,12 @@ class LetPotWateringSystemStatus(LetPotDeviceStatus):
     """Intermittent cycle watering mode rest interval, in seconds"""
 
     pump_cycle_skip_water: int | None
+    pump_works_end: datetime | None
+    """End of currently running watering event, or None if there is no active event"""
+
     pump_works_latest_reason: int
-    pump_works_latest_time: list[int]
-    pump_works_next_time: list[int]
+    pump_works_latest_time: datetime | None
+    """When the latest watering event happened, or None if not set"""
+
+    pump_works_next_time: datetime | None
+    """Scheduled next watering event, or None if not set"""

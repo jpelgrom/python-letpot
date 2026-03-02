@@ -1,11 +1,22 @@
 """Tests for the converters."""
 
+from freezegun import freeze_time
 import pytest
 
-from letpot.converters import CONVERTERS, LetPotDeviceConverter, LPHx1Converter
+from letpot.converters import (
+    CONVERTERS,
+    ISEConverter,
+    LetPotDeviceConverter,
+    LPHx1Converter,
+)
 from letpot.exceptions import LetPotException
 
-from . import DEVICE_STATUS_GARDEN
+from . import (
+    DEVICE_STATUS_DI_CYCLE,
+    DEVICE_STATUS_DI_IDLE,
+    DEVICE_STATUS_DI_MANUAL,
+    DEVICE_STATUS_GARDEN,
+)
 
 SUPPORTED_DEVICE_TYPES_GARDEN = [
     "IGS01",
@@ -95,3 +106,35 @@ def test_lph21_message_to_status() -> None:
     message = b"4d000112620100010101010000071e110001f4000000"
     status = converter.convert_hex_to_status(message)
     assert status == DEVICE_STATUS_GARDEN
+
+
+def test_ise06_idle_message_to_status() -> None:
+    """Test that a message from a ISE06 device type when idle decodes to a certain status."""
+    converter = ISEConverter("ISE06")
+    message = (
+        b"4d000121420100000000000300000000000018000300000000000000000000000000000000"
+    )
+    status = converter.convert_hex_to_status(message)
+    assert status == DEVICE_STATUS_DI_IDLE
+
+
+@freeze_time("2026-03-01")
+def test_ise06_manual_message_to_status() -> None:
+    """Test that a message from a ISE06 device type when manually started decodes to a certain status."""
+    converter = ISEConverter("ISE06")
+    message = (
+        b"4d000121420100000101000300000084000018000300000000000200000031000000000000"
+    )
+    status = converter.convert_hex_to_status(message)
+    assert status == DEVICE_STATUS_DI_MANUAL
+
+
+@freeze_time("2026-03-01")
+def test_ise06_cycle_message_to_status() -> None:
+    """Test that a message from a ISE06 device type when cycle watering decodes to a certain status."""
+    converter = ISEConverter("ISE06")
+    message = (
+        b"4d00012142010000010100030000007b01000c000501001e000f03000000390000a8840000"
+    )
+    status = converter.convert_hex_to_status(message)
+    assert status == DEVICE_STATUS_DI_CYCLE

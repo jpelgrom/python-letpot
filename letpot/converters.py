@@ -3,7 +3,7 @@
 import logging
 import math
 from abc import ABC, abstractmethod
-from datetime import time
+from datetime import datetime, time, timedelta
 from typing import Sequence
 
 from aiomqtt.types import PayloadType
@@ -18,6 +18,7 @@ from letpot.models import (
     LetPotWateringSystemStatus,
     LightMode,
     TemperatureUnit,
+    WateringReason,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -460,6 +461,22 @@ class ISEConverter(LetPotDeviceConverter):
         else:
             pump_cycle_skipwater = math.floor((256 * data[35] + data[36]) / 60)
 
+        now = datetime.now()
+        if (seconds := int.from_bytes(data[12:16], byteorder="big")) == 0:
+            pump_works_end = None
+        else:
+            pump_works_end = now + timedelta(seconds=seconds)
+
+        if (seconds := int.from_bytes(data[27:31], byteorder="big")) == 0:
+            pump_works_latest_time = None
+        else:
+            pump_works_latest_time = now - timedelta(seconds=seconds)
+
+        if (seconds := int.from_bytes(data[31:35], byteorder="big")) == 0:
+            pump_works_next_time = None
+        else:
+            pump_works_next_time = now + timedelta(seconds=seconds)
+
         return LetPotWateringSystemStatus(
             raw=data,
             pump_mode=data[9],
@@ -469,16 +486,16 @@ class ISEConverter(LetPotDeviceConverter):
             wifi_state=data[6],
             pump_on=data[8] == 1,
             pump_manual_duration=256 * data[10] + data[11],
-            pump_countdown=data[12:16],
             pump_cycle_on=data[16] == 1,
             pump_cycle_frequency=256 * data[17] + data[18],
             pump_cycle_duration=256 * data[19] + data[20],
-            pump_cycle_mode=CycleWateringMode(data[10]),
+            pump_cycle_mode=CycleWateringMode(data[21]),
             pump_cycle_workinginterval=256 * data[22] + data[23],
             pump_cycle_restinterval=256 * data[24] + data[25],
-            pump_works_latest_reason=data[26],
-            pump_works_latest_time=data[27:31],
-            pump_works_next_time=data[31:35],
+            pump_works_end=pump_works_end,
+            pump_works_latest_reason=WateringReason(data[26]),
+            pump_works_latest_time=pump_works_latest_time,
+            pump_works_next_time=pump_works_next_time,
             pump_cycle_skip_water=pump_cycle_skipwater,
         )
 
