@@ -15,3 +15,7 @@ class LetPotAuthenticationException(LetPotException):
 
 class LetPotFeatureException(LetPotException):
     """LetPot device feature exception."""
+
+
+class LetPotDeviceCategoryException(LetPotFeatureException):
+    """LetPot incorrect device type exception."""

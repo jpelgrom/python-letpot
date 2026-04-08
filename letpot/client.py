@@ -1,7 +1,8 @@
 """Python client for LetPot hydroponic gardens."""
 
 import time
-from aiohttp import ClientSession, ClientResponse
+
+from aiohttp import ClientResponse, ClientSession
 
 from letpot.exceptions import LetPotAuthenticationException, LetPotConnectionException
 
