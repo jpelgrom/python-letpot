@@ -24,7 +24,8 @@ from letpot.models import (
 _LOGGER = logging.getLogger(__name__)
 
 MODEL_AIR = ("LetPot Air", "LPH-AIR")
-MODEL_DI = ("LetPot Automatic Watering System", "DI")
+MODEL_DI2 = ("LetPot Automatic Watering System 2.0", "DI-2")
+MODEL_DI3 = ("LetPot Automatic Watering System 2.0", "DI-3")
 MODEL_MAX = ("LetPot Max", "LPH-MAX")
 MODEL_MINI = ("LetPot Mini", "LPH-MINI")
 MODEL_PRO = ("LetPot Pro", "LPH-PRO")
@@ -414,14 +415,19 @@ class LPHMaxHigherConverter(LetPotDeviceConverter):
 
 
 class ISEConverter(LetPotDeviceConverter):
-    """Converters and info for device type ISE05, ISE06 (Automatic Watering System)."""
+    """Converters and info for device type ISE05, ISE06 (Automatic Watering System 2.0)."""
 
     @staticmethod
     def supports_type(device_type: str) -> bool:
         return device_type in ["ISE05", "ISE06"]
 
     def get_device_model(self) -> tuple[str, str] | None:
-        return MODEL_DI
+        if self._device_type == "ISE05":
+            return MODEL_DI2
+        elif self._device_type == "ISE06":
+            return MODEL_DI3
+        else:
+            return None
 
     def supported_features(self) -> DeviceFeature:
         return DeviceFeature.CATEGORY_WATERING_SYSTEM
