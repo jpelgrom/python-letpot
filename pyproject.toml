@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "letpot"
 version = "0.1.0"
-description = "Asynchronous Python client for LetPot hydroponic gardens."
+description = "Asynchronous Python client for LetPot hydroponic gardens and watering systems."
 authors = ["Joris Pelgröm <joris.pelgrom@gmail.com>"]
 license = "MIT"
 readme = "README.md"
