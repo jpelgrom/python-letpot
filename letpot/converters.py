@@ -503,10 +503,18 @@ class ISEConverter(LetPotDeviceConverter):
         return []
 
 
-CONVERTERS: Sequence[type[LetPotDeviceConverter]] = [
+GARDEN_CONVERTERS: Sequence[type[LetPotDeviceConverter]] = [
     LPHx1Converter,
     IGSorAltConverter,
     LPHMaxLowerConverter,
     LPHMaxHigherConverter,
+]
+
+WATERING_SYSTEM_CONVERTERS: Sequence[type[LetPotDeviceConverter]] = [
     ISEConverter,
+]
+
+CONVERTERS: Sequence[type[LetPotDeviceConverter]] = [
+    *GARDEN_CONVERTERS,
+    *WATERING_SYSTEM_CONVERTERS,
 ]
