@@ -515,12 +515,17 @@ GARDEN_CONVERTERS: Sequence[type[LetPotDeviceConverter]] = [
     LPHMaxLowerConverter,
     LPHMaxHigherConverter,
 ]
+"""Converters for hydroponic gardens providing `letpot.models.LetPotGardenStatus` as their status."""
+
 
 WATERING_SYSTEM_CONVERTERS: Sequence[type[LetPotDeviceConverter]] = [
     ISEConverter,
 ]
+"""Converters for watering systems providing `letpot.models.LetPotWateringSystemStatus` as their status."""
+
 
 CONVERTERS: Sequence[type[LetPotDeviceConverter]] = [
     *GARDEN_CONVERTERS,
     *WATERING_SYSTEM_CONVERTERS,
 ]
+"""Converters for all supported device types."""
