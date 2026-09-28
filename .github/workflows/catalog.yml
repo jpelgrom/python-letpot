@@ -1,0 +1,67 @@
+---
+name: Catalog check
+
+on:
+  schedule:
+    # Every Sunday at 12:00 UTC, on the default branch
+    - cron: "0 12 * * 0"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  catalog-check:
+    runs-on: ubuntu-latest
+    outputs:
+      models: ${{ steps.model_matrix.outputs.models }}
+    steps:
+      - name: Check out repository catalog
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            .github/catalog
+      - name: Get supported models
+        id: supported_models
+        run: |
+          echo "response=$(curl --silent https://open.letpot.net/v1/models)" >> $GITHUB_OUTPUT
+      - name: Check supported models match stored
+        env:
+          json: ${{ steps.supported_models.outputs.response }}
+        run: |
+          existing=$(cat .github/catalog/models.json)
+          test "$json" == "$existing"
+      - name: Make model matrix
+        id: model_matrix
+        if: always() # Always run to prevent parsing error on loop
+        env:
+          json: ${{ steps.supported_models.outputs.response }}
+        run: |
+          types='[]'
+
+          if [[ -n "$json" && "$json" != "null" ]]; then
+            types=$(jq -c '[.data.models[]?.type]' <<< "$json")
+          fi
+          
+          echo "models=$types" >> "$GITHUB_OUTPUT"
+
+  catalog-loop:
+    runs-on: ubuntu-latest
+    needs: [catalog-check]
+    strategy:
+      matrix:
+        type: ${{ fromJSON(needs.catalog-check.outputs.models) }}
+    steps:
+      - name: Check out repository catalog
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            .github/catalog
+      - name: Check content matches support
+        env:
+          model: ${{ matrix.type }}
+        run: |
+          existing=$(cat ".github/catalog/models/$model.json")
+          response=$(curl --silent "https://open.letpot.net/v1/models/$model")
+          test "$response" == "$existing"
