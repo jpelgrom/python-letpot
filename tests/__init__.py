@@ -1,6 +1,6 @@
 """Tests for Python client for LetPot hydroponic gardens."""
 
-from datetime import datetime, time
+from datetime import UTC, datetime, time
 
 from letpot.models import (
     AuthenticationInfo,
@@ -152,9 +152,9 @@ DEVICE_STATUS_DI_MANUAL = LetPotWateringSystemStatus(
     pump_cycle_workinginterval=0,
     pump_cycle_restinterval=0,
     pump_cycle_skip_water=0,
-    pump_works_end=datetime(2026, 3, 1, 0, 2, 12),
+    pump_works_end=datetime(2026, 3, 1, 0, 2, 12, tzinfo=UTC),
     pump_works_latest_reason=WateringReason.MANUAL,
-    pump_works_latest_time=datetime(2026, 2, 28, 23, 59, 11),
+    pump_works_latest_time=datetime(2026, 2, 28, 23, 59, 11, tzinfo=UTC),
     pump_works_next_time=None,
 )
 
@@ -210,8 +210,8 @@ DEVICE_STATUS_DI_CYCLE = LetPotWateringSystemStatus(
     pump_cycle_workinginterval=30,
     pump_cycle_restinterval=15,
     pump_cycle_skip_water=0,
-    pump_works_end=datetime(2026, 3, 1, 0, 2, 3),
+    pump_works_end=datetime(2026, 3, 1, 0, 2, 3, tzinfo=UTC),
     pump_works_latest_reason=WateringReason.CYCLE,
-    pump_works_latest_time=datetime(2026, 2, 28, 23, 59, 3),
-    pump_works_next_time=datetime(2026, 3, 1, 11, 59),
+    pump_works_latest_time=datetime(2026, 2, 28, 23, 59, 3, tzinfo=UTC),
+    pump_works_next_time=datetime(2026, 3, 1, 11, 59, tzinfo=UTC),
 )
