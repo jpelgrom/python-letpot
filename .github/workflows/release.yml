@@ -6,6 +6,8 @@ on:
     types:
       - published
 
+permissions: {}
+
 env:
   DEFAULT_PYTHON: "3.14"
 
