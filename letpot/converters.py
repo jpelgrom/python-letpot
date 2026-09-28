@@ -3,8 +3,8 @@
 import logging
 import math
 from abc import ABC, abstractmethod
-from datetime import datetime, time, timedelta
-from typing import Sequence
+from collections.abc import Sequence
+from datetime import UTC, datetime, time, timedelta
 
 from aiomqtt.types import PayloadType
 
@@ -47,7 +47,6 @@ class LetPotDeviceConverter(ABC):
     @abstractmethod
     def supports_type(device_type: str) -> bool:
         """Returns if the converter supports the supplied type."""
-        pass
 
     @abstractmethod
     def get_device_model(self) -> tuple[str, str] | None:
@@ -60,22 +59,18 @@ class LetPotDeviceConverter(ABC):
     @abstractmethod
     def get_current_status_message(self) -> list[int]:
         """Returns the message content for getting the current device status."""
-        pass
 
     @abstractmethod
     def convert_hex_to_status(self, message: PayloadType) -> LetPotDeviceStatus | None:
         """Converts a hexadecimal bytes status message to a status dataclass."""
-        pass
 
     @abstractmethod
     def get_update_status_message(self, status: LetPotDeviceStatus) -> list[int]:
         """Returns the message content for updating the device status."""
-        pass
 
     @abstractmethod
     def get_light_brightness_levels(self) -> list[int]:
         """Returns the brightness steps supported by the device for this converter."""
-        pass
 
     def _hex_bytes_to_int_array(self, hex_message: PayloadType) -> list[int] | None:
         """Converts a hexadecimal bytes message to a list of integers."""
@@ -148,7 +143,7 @@ class LPHx1Converter(LetPotDeviceConverter):
         if self._device_type in ["LPH21", "LPH22"]:
             error_pump_malfunction = None
         else:
-            error_pump_malfunction = True if data[7] & 2 else False
+            error_pump_malfunction = bool(data[7] & 2)
 
         return LetPotGardenStatus(
             raw=data,
@@ -164,7 +159,7 @@ class LPHx1Converter(LetPotDeviceConverter):
             system_on=data[8] == 1,
             system_sound=data[20] == 1 if data[20] is not None else None,
             errors=LetPotDeviceErrors(
-                low_water=True if data[7] & 1 else False,
+                low_water=bool(data[7] & 1),
                 pump_malfunction=error_pump_malfunction,
             ),
         )
@@ -227,7 +222,7 @@ class IGSorAltConverter(LetPotDeviceConverter):
         if self._device_type == "IGS01":
             error_low_water = None
         else:
-            error_low_water = True if data[7] & 1 else False
+            error_low_water = bool(data[7] & 1)
 
         return LetPotGardenStatus(
             raw=data,
@@ -320,9 +315,9 @@ class LPHMaxLowerConverter(LetPotDeviceConverter):
             system_on=data[8] == 1,
             system_sound=data[25] == 1 if data[25] is not None else None,
             errors=LetPotDeviceErrors(
-                low_water=True if data[7] & 2 else False,
-                low_nutrients=True if data[7] & 1 else False,
-                refill_error=True if data[7] & 4 else False,
+                low_water=bool(data[7] & 2),
+                low_nutrients=bool(data[7] & 1),
+                refill_error=bool(data[7] & 4),
             ),
             temperature_unit=TemperatureUnit(data[24]),
             temperature_value=256 * data[22] + data[23],
@@ -400,9 +395,9 @@ class LPHMaxHigherConverter(LetPotDeviceConverter):
             system_on=data[8] == 1,
             system_sound=None,
             errors=LetPotDeviceErrors(
-                low_water=True if data[7] & 2 else False,
-                low_nutrients=True if data[7] & 1 else False,
-                refill_error=True if data[7] & 4 else False,
+                low_water=bool(data[7] & 2),
+                low_nutrients=bool(data[7] & 1),
+                refill_error=bool(data[7] & 4),
             ),
             temperature_unit=TemperatureUnit(data[24]),
             temperature_value=256 * data[22] + data[23],
@@ -467,7 +462,7 @@ class ISEConverter(LetPotDeviceConverter):
         else:
             pump_cycle_skipwater = math.floor((256 * data[35] + data[36]) / 60)
 
-        now = datetime.now()
+        now = datetime.now(tz=UTC)
         if (seconds := int.from_bytes(data[12:16], byteorder="big")) == 0:
             pump_works_end = None
         else:
@@ -487,7 +482,7 @@ class ISEConverter(LetPotDeviceConverter):
             raw=data,
             pump_mode=data[9],
             errors=LetPotDeviceErrors(
-                low_water=True if data[7] & 1 else False,
+                low_water=bool(data[7] & 1),
             ),
             wifi_state=data[6],
             pump_on=data[8] == 1,

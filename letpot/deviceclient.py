@@ -6,11 +6,11 @@ import logging
 import os
 import ssl
 import time as systime
-from collections.abc import Coroutine
+from collections.abc import Callable, Coroutine
 from datetime import time
 from functools import wraps
 from hashlib import md5, sha256
-from typing import Any, Callable, ParamSpec, TypeVar, cast
+from typing import Any, ParamSpec, TypeVar, cast
 
 import aiomqtt
 
@@ -83,28 +83,29 @@ _SSL_CONTEXT = _create_ssl_context()
 class LetPotDeviceClient:
     """Client for connecting to LetPot device."""
 
-    AUTH_ERROR_RC = [4, 5, 134, 135]
+    AUTH_ERROR_RC = (4, 5, 134, 135)
     BROKER_HOST = "broker.letpot.net"
     MTU = 128
 
     _client: aiomqtt.Client | None = None
     _client_task: asyncio.Task | None = None
     _connected: asyncio.Future[bool] | None = None
-    _topics: list[str] = []
     _message_id: int = 0
 
     _user_id: str
     _email: str
 
-    _device_callbacks: dict[str, Callable[[LetPotDeviceStatus], None]] = {}
-    _device_status_last: dict[str, LetPotDeviceStatus | None] = {}
-    _device_status_pending: dict[str, LetPotDeviceStatus | None] = {}
-    _device_status_timeout: dict[str, asyncio.Task | None] = {}
-    _device_status_event: dict[str, asyncio.Event | None] = {}
-
     def __init__(self, info: AuthenticationInfo) -> None:
         self._user_id = info.user_id
         self._email = info.email
+
+        self._topics: list[str] = []
+
+        self._device_callbacks: dict[str, Callable[[LetPotDeviceStatus], None]] = {}
+        self._device_status_last: dict[str, LetPotDeviceStatus | None] = {}
+        self._device_status_pending: dict[str, LetPotDeviceStatus | None] = {}
+        self._device_status_timeout: dict[str, asyncio.Task | None] = {}
+        self._device_status_event: dict[str, asyncio.Event | None] = {}
 
     def _converter(self, serial: str) -> LetPotDeviceConverter:
         """Get the device converter for the current serial number."""
@@ -172,7 +173,7 @@ class LetPotDeviceClient:
                 event = self._device_status_event.get(serial)
                 if event is not None and not event.is_set():
                     event.set()
-        except Exception:  # noqa: BLE001
+        except Exception:
             _LOGGER.warning(
                 f"Exception while handling message for {message.topic.value}, ignoring",
                 exc_info=True,
@@ -274,14 +275,16 @@ class LetPotDeviceClient:
             except aiomqtt.MqttError as err:
                 self._client = None
 
-                if isinstance(err, aiomqtt.MqttCodeError):
-                    if err.rc in self.AUTH_ERROR_RC:
-                        msg = "MQTT auth error"
-                        _LOGGER.error("%s: %s", msg, err)
-                        auth_exception = LetPotAuthenticationException(msg)
-                        if self._connected is not None and not self._connected.done():
-                            self._connected.set_exception(auth_exception)
-                        raise auth_exception from err
+                if (
+                    isinstance(err, aiomqtt.MqttCodeError)
+                    and err.rc in self.AUTH_ERROR_RC
+                ):
+                    msg = "MQTT auth error"
+                    _LOGGER.error("%s: %s", msg, err)
+                    auth_exception = LetPotAuthenticationException(msg)
+                    if self._connected is not None and not self._connected.done():
+                        self._connected.set_exception(auth_exception)
+                    raise auth_exception from err
 
                 connection_attempts += 1
                 if connection_attempts == 1:
@@ -346,10 +349,10 @@ class LetPotDeviceClient:
             await self._client.subscribe(topic)
             self._topics.append(topic)
             self._device_callbacks[serial] = callback
-        except aiomqtt.MqttError as err:
+        except aiomqtt.MqttError:
             if len(self._topics) == 0:
                 await self._disconnect()
-            raise err
+            raise
 
     async def unsubscribe(self, serial: str) -> None:
         """Unsubscribes from device updates, and cancels the active device client connection if required."""
