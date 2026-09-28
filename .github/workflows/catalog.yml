@@ -4,7 +4,7 @@ name: Catalog check
 on:
   schedule:
     # Every Sunday at 12:00 UTC, on the default branch
-    - cron: "0 12 * * 7"
+    - cron: "0 12 * * 0"
   workflow_dispatch:
 
 permissions: {}
